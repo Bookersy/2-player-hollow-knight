@@ -2,23 +2,18 @@
 
 A same-screen, local 2-player mod for Hollow Knight. Player 2 is a second, blue-tinted Knight on the same screen, using their own controller.
 
-> **Version 0.1.1 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
+> **Version 0.1.2 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
 
 ## Install (no building needed)
 1. Install [Lumafly](https://themulhima.github.io/Lumafly/) and use it to install any mod (for example HKMP). This sets up the Modding API. The game needs to be on a moddable version (Steam/GOG 1.5.78).
-2. Download [`LocalCoop-0.1.1.zip`](download/LocalCoop-0.1.1.zip?raw=1) (click it, then the download button).
+2. Download [`LocalCoop-0.1.2.zip`](download/LocalCoop-0.1.2.zip?raw=1) (click it, then the download button).
 3. Copy the `LocalCoop` folder from the zip into
    `...\Hollow Knight\hollow_knight_Data\Managed\Mods\`
    (to find it in Steam: right-click Hollow Knight → Manage → Browse local files).
 4. Start the game. "Local Coop" appears in the top-left mod list on the title screen.
 
 ## Controls
-| | Player 1 (default) | Player 2 (controller) |
-|---|---|---|
-| Move | Keyboard as usual | Left stick / D-pad |
-| Jump | ″ | A / Cross |
-| Attack | ″ | X / Square (hold up/down to aim) |
-| Dash | ″ | RT / R2 or B / Circle |
+Player 1 uses the keyboard as usual. Player 2 uses a controller with **the same button layout as the game's controller settings** (Options → Controller), so rebinding there changes Player 2's buttons too. Player 2 can move, jump, attack (hold up or down to aim) and dash.
 
 Press **F9** to turn co-op on or off.
 

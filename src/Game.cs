@@ -76,6 +76,37 @@ namespace LocalCoop
             return null;
         }
 
+        // ------------------------------------------------------------ the game's controller bindings
+
+        static InputHandler inputHandler;
+
+        public static object HeroActions()
+        {
+            if (inputHandler == null) inputHandler = UnityEngine.Object.FindObjectOfType<InputHandler>();
+            return inputHandler == null ? null : Get(inputHandler, "inputActions");
+        }
+
+        /// <summary>
+        /// The controller buttons/sticks the game has bound to one of the Knight's actions
+        /// (e.g. "jump", "attack", "dash", "left"), as set in Options → Controller.
+        /// </summary>
+        public static List<InputControlType> BoundControls(string actionName)
+        {
+            var result = new List<InputControlType>();
+            object action = Get(HeroActions(), actionName);
+            var bindings = Get(action, "Bindings") as System.Collections.IEnumerable;
+            if (bindings == null) return result;
+
+            foreach (object b in bindings)
+            {
+                if (b == null || b.GetType().Name != "DeviceBindingSource") continue;
+                object control = Get(b, "Control");
+                if (control is InputControlType && !result.Contains((InputControlType)control))
+                    result.Add((InputControlType)control);
+            }
+            return result;
+        }
+
         // ------------------------------------------------------------ generic member access
 
         static Func<object> StaticGetter(Type t, params string[] names)

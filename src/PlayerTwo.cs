@@ -190,6 +190,7 @@ namespace LocalCoop
             }
 
             Tick(dt);
+            RefreshBindings(dt);
 
             if (downed)
             {
@@ -235,17 +236,12 @@ namespace LocalCoop
 
             if (Device != null)
             {
-                x = Value(CLeftX);
-                y = Value(CLeftY);
-                if (IsDown(CDPadRight)) x = 1f;
-                if (IsDown(CDPadLeft)) x = -1f;
-                if (IsDown(CDPadUp)) y = 1f;
-                if (IsDown(CDPadDown)) y = -1f;
-
-                jumpPressed = WasPressed(CJump);                          // A / Cross
-                jumpDown = IsDown(CJump);
-                attackPressed = WasPressed(CAttack);                      // X / Square
-                dashPressed = WasPressed(CDashA) || WasPressed(CDashB);   // RT / R2, B / Circle
+                x = Axis("right") - Axis("left");
+                y = Axis("up") - Axis("down");
+                jumpPressed = Pressed("jump");
+                jumpDown = Held("jump");
+                attackPressed = Pressed("attack");
+                dashPressed = Pressed("dash");
             }
 
             int moveX = x > StickDeadzone ? 1 : (x < -StickDeadzone ? -1 : 0);
@@ -322,40 +318,86 @@ namespace LocalCoop
         int lastMoveX;
         bool lastJumpDown;
 
-        // Control ids are looked up by name so they match the game's InControl version.
-        static readonly InputControlType? CLeftX = Game.Control("LeftStickX");
-        static readonly InputControlType? CLeftY = Game.Control("LeftStickY");
-        static readonly InputControlType? CDPadLeft = Game.Control("DPadLeft");
-        static readonly InputControlType? CDPadRight = Game.Control("DPadRight");
-        static readonly InputControlType? CDPadUp = Game.Control("DPadUp");
-        static readonly InputControlType? CDPadDown = Game.Control("DPadDown");
-        static readonly InputControlType? CJump = Game.Control("Action1");
-        static readonly InputControlType? CDashB = Game.Control("Action2");
-        static readonly InputControlType? CAttack = Game.Control("Action3");
-        static readonly InputControlType? CDashA = Game.Control("RightTrigger");
-
-        InputControl GetControl(InputControlType? t)
+        // Player 2 uses the same controller bindings as the game (Options → Controller).
+        // Defaults are only used if the game's bindings can't be read.
+        static readonly string[] BoundActions = { "left", "right", "up", "down", "jump", "attack", "dash" };
+        static readonly Dictionary<string, string[]> DefaultBindings = new Dictionary<string, string[]>
         {
-            if (Device == null || !t.HasValue) return null;
-            return Device.GetControl(t.Value);
+            { "left", new[] { "LeftStickLeft", "DPadLeft" } },
+            { "right", new[] { "LeftStickRight", "DPadRight" } },
+            { "up", new[] { "LeftStickUp", "DPadUp" } },
+            { "down", new[] { "LeftStickDown", "DPadDown" } },
+            { "jump", new[] { "Action1" } },
+            { "attack", new[] { "Action3" } },
+            { "dash", new[] { "RightTrigger" } },
+        };
+        readonly Dictionary<string, List<InputControlType>> bindings = new Dictionary<string, List<InputControlType>>();
+        float bindingRefresh;
+        bool loggedBindings;
+
+        void RefreshBindings(float dt)
+        {
+            bindingRefresh -= dt;
+            if (bindingRefresh > 0f && bindings.Count > 0) return;
+            bindingRefresh = 2f; // pick up rebinds made in the options menu
+
+            var summary = new System.Text.StringBuilder();
+            foreach (string action in BoundActions)
+            {
+                List<InputControlType> list = Game.BoundControls(action);
+                if (list.Count == 0)
+                {
+                    foreach (string name in DefaultBindings[action])
+                    {
+                        InputControlType? c = Game.Control(name);
+                        if (c.HasValue) list.Add(c.Value);
+                    }
+                }
+                bindings[action] = list;
+                summary.Append(action).Append('=').Append(string.Join("/", list.ConvertAll(c => c.ToString()).ToArray())).Append(' ');
+            }
+            if (!loggedBindings)
+            {
+                loggedBindings = true;
+                LocalCoop.Info("Player 2 bindings: " + summary);
+            }
         }
 
-        float Value(InputControlType? t)
+        float Axis(string action)
         {
-            InputControl c = GetControl(t);
-            return c == null ? 0f : c.Value;
+            List<InputControlType> list;
+            if (Device == null || !bindings.TryGetValue(action, out list)) return 0f;
+            float best = 0f;
+            for (int i = 0; i < list.Count; i++)
+            {
+                InputControl c = Device.GetControl(list[i]);
+                if (c != null && c.Value > best) best = c.Value;
+            }
+            return best;
         }
 
-        bool IsDown(InputControlType? t)
+        bool Held(string action)
         {
-            InputControl c = GetControl(t);
-            return c != null && c.IsPressed;
+            List<InputControlType> list;
+            if (Device == null || !bindings.TryGetValue(action, out list)) return false;
+            for (int i = 0; i < list.Count; i++)
+            {
+                InputControl c = Device.GetControl(list[i]);
+                if (c != null && c.IsPressed) return true;
+            }
+            return false;
         }
 
-        bool WasPressed(InputControlType? t)
+        bool Pressed(string action)
         {
-            InputControl c = GetControl(t);
-            return c != null && c.WasPressed;
+            List<InputControlType> list;
+            if (Device == null || !bindings.TryGetValue(action, out list)) return false;
+            for (int i = 0; i < list.Count; i++)
+            {
+                InputControl c = Device.GetControl(list[i]);
+                if (c != null && c.WasPressed) return true;
+            }
+            return false;
         }
 
         void DoJump(float speed)
