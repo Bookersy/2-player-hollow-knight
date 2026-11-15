@@ -82,6 +82,21 @@ namespace LocalCoop
         string attackClip = "Slash";
         readonly HashSet<HealthManager> hitThisSwing = new HashSet<HealthManager>();
 
+        // The white slash arcs, copied from the Knight's own Attacks/* children.
+        class SlashEffect
+        {
+            public Transform Source;
+            public GameObject Go;
+            public tk2dSprite Sprite;
+            public tk2dSpriteAnimator Anim;
+            public MeshRenderer Renderer;
+            public string Clip;
+        }
+        readonly Dictionary<string, SlashEffect> slashes = new Dictionary<string, SlashEffect>();
+        SlashEffect activeSlash;
+        float slashTimer;
+        const float SlashEffectTime = 0.25f;
+
         static int MaxMasks
         {
             get { return Mathf.Max(1, LocalCoop.Settings.P2MaxMasks); }
@@ -141,6 +156,13 @@ namespace LocalCoop
             LocalCoop.Info("Player 2 speeds: run " + RunSpeed + ", jump " + JumpSpeed +
                            ", fall " + MaxFallSpeed + ", dash " + DashSpeed);
 
+            foreach (string name in new[] { "Slash", "AltSlash", "UpSlash", "DownSlash" })
+            {
+                SlashEffect fx = CreateSlashEffect(name);
+                if (fx != null) slashes[name] = fx;
+            }
+            LocalCoop.Info("Player 2 slash effects found: " + slashes.Count + "/4");
+
             var s = LocalCoop.Settings;
             tint = new Color(s.TintR, s.TintG, s.TintB, 1f);
             masks = MaxMasks;
@@ -191,6 +213,7 @@ namespace LocalCoop
 
             Tick(dt);
             RefreshBindings(dt);
+            UpdateSlash(dt);
 
             if (downed)
             {
@@ -542,6 +565,7 @@ namespace LocalCoop
                 altSlash = !altSlash;
             }
             currentClip = null; // force the slash animation to restart
+            ShowSlash(attackClip);
 
             bool downSlash = direction == 270f;
             bool pogo = false;
@@ -690,6 +714,7 @@ namespace LocalCoop
         {
             hidden = h;
             if (meshRenderer != null) meshRenderer.enabled = !h;
+            if (h) HideSlash();
         }
 
         void UpdateVisuals()
@@ -755,6 +780,74 @@ namespace LocalCoop
         }
 
         // ---------------------------------------------------------------- helpers
+
+        SlashEffect CreateSlashEffect(string name)
+        {
+            Transform src = hero.transform.Find("Attacks/" + name);
+            if (src == null) return null;
+            var srcSprite = src.GetComponent<tk2dSprite>();
+            var srcAnim = src.GetComponent<tk2dSpriteAnimator>();
+            if (srcSprite == null || srcAnim == null) return null;
+
+            // NailSlash.animName is the clip the game plays for this swing.
+            string clip = Game.Get(src.GetComponent("NailSlash"), "animName") as string;
+            if (string.IsNullOrEmpty(clip) || srcAnim.GetClipByName(clip) == null) return null;
+
+            var go = new GameObject("P2 " + name);
+            go.transform.parent = transform;
+            var fx = new SlashEffect
+            {
+                Source = src,
+                Go = go,
+                Sprite = tk2dSprite.AddComponent(go, srcSprite.Collection, srcSprite.spriteId),
+                Anim = go.AddComponent<tk2dSpriteAnimator>(),
+                Renderer = go.GetComponent<MeshRenderer>(),
+                Clip = clip
+            };
+            fx.Anim.Library = srcAnim.Library;
+
+            var srcRenderer = src.GetComponent<MeshRenderer>();
+            if (fx.Renderer != null)
+            {
+                if (srcRenderer != null)
+                {
+                    fx.Renderer.sortingLayerID = srcRenderer.sortingLayerID;
+                    fx.Renderer.sortingOrder = srcRenderer.sortingOrder;
+                }
+                fx.Renderer.enabled = false;
+            }
+            return fx;
+        }
+
+        void ShowSlash(string clip)
+        {
+            HideSlash();
+            SlashEffect fx;
+            if (!slashes.TryGetValue(clip == "SlashAlt" ? "AltSlash" : clip, out fx) || fx.Renderer == null) return;
+
+            // Follow the Knight's own placement/size (charms like Longnail change it).
+            fx.Go.transform.localPosition = fx.Source.localPosition;
+            fx.Go.transform.localRotation = fx.Source.localRotation;
+            fx.Go.transform.localScale = fx.Source.localScale;
+            fx.Sprite.color = new Color(Mathf.Lerp(1f, tint.r, 0.5f), Mathf.Lerp(1f, tint.g, 0.5f), Mathf.Lerp(1f, tint.b, 0.5f), 1f);
+            fx.Renderer.enabled = true;
+            fx.Anim.Play(fx.Clip);
+            activeSlash = fx;
+            slashTimer = SlashEffectTime;
+        }
+
+        void UpdateSlash(float dt)
+        {
+            if (activeSlash == null) return;
+            slashTimer -= dt;
+            if (slashTimer <= 0f) HideSlash();
+        }
+
+        void HideSlash()
+        {
+            if (activeSlash != null && activeSlash.Renderer != null) activeSlash.Renderer.enabled = false;
+            activeSlash = null;
+        }
 
         float HeroFloat(string field, float fallback)
         {
