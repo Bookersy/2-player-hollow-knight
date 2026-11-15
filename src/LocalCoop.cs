@@ -21,8 +21,8 @@ namespace LocalCoop
         public int P2MaxMasks = 5;
         public float RespawnSeconds = 5f;
 
-        /// <summary>Player 2 regains one mask after this many nail hits on enemies (0 = never).</summary>
-        public int NailHitsPerHeal = 6;
+        /// <summary>Bonus: Player 2 regains one mask after this many nail hits (0 = off; use Focus instead).</summary>
+        public int NailHitsPerHeal = 0;
 
         /// <summary>Seconds Player 2 can be off screen before being pulled back to Player 1.</summary>
         public float LeashSeconds = 1.5f;
@@ -47,7 +47,7 @@ namespace LocalCoop
 
         public override string GetVersion()
         {
-            return "0.1.4";
+            return "0.1.5";
         }
 
         public void OnLoadGlobal(CoopSettings s)

@@ -169,6 +169,64 @@ namespace LocalCoop
             return false;
         }
 
+        // ------------------------------------------------------------ geo pickups
+
+        static bool loggedGeoPath;
+
+        /// <summary>
+        /// Collects a geo pickup for the Knight. First lets the game do it (as if the
+        /// Knight's HeroBox touched it, so the sound/effect play); if that doesn't add
+        /// any geo, adds the value directly and removes the pickup.
+        /// </summary>
+        public static void CollectGeo(Component geo, HeroController hero)
+        {
+            PlayerData pd = PlayerData.instance;
+            if (pd == null || geo == null) return;
+            int before = pd.GetInt("geo");
+
+            Transform heroBoxT = hero.transform.Find("HeroBox");
+            Collider2D heroBox = heroBoxT == null ? null : heroBoxT.GetComponent<Collider2D>();
+            if (heroBox != null)
+            {
+                foreach (string name in new[] { "OnTriggerEnter2D", "OnTriggerStay2D" })
+                {
+                    MethodInfo m = geo.GetType().GetMethod(name, AnyInstance, null, new[] { typeof(Collider2D) }, null);
+                    if (m == null) continue;
+                    try { m.Invoke(geo, new object[] { heroBox }); }
+                    catch (Exception e) { LocalCoop.Info("Geo pickup error: " + e.Message); }
+                    break;
+                }
+            }
+
+            if (pd.GetInt("geo") > before)
+            {
+                if (!loggedGeoPath) { loggedGeoPath = true; LocalCoop.Info("Player 2 geo pickup: using the game's own pickup."); }
+                return;
+            }
+
+            int value = GeoValue(geo);
+            MethodInfo addGeo = hero.GetType().GetMethod("AddGeo", new[] { typeof(int) });
+            if (addGeo == null) return;
+            addGeo.Invoke(hero, new object[] { value });
+            geo.gameObject.SetActive(false);
+            if (!loggedGeoPath) { loggedGeoPath = true; LocalCoop.Info("Player 2 geo pickup: using fallback (" + value + " geo)."); }
+        }
+
+        static int GeoValue(Component geo)
+        {
+            int type = 0;
+            try { type = Convert.ToInt32(Get(geo, "type")); } catch (Exception) { }
+            string field = type == 2 ? "valueLarge" : (type == 1 ? "valueMed" : "valueSmall");
+            int fallback = type == 2 ? 25 : (type == 1 ? 5 : 1);
+            try
+            {
+                object v = Get(geo, field);
+                if (v != null && Convert.ToInt32(v) > 0) return Convert.ToInt32(v);
+            }
+            catch (Exception) { }
+            return fallback;
+        }
+
         // ------------------------------------------------------------ hitting enemies
 
         static Type hitType, attackTypesType;

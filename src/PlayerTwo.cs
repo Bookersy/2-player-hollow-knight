@@ -29,6 +29,10 @@ namespace LocalCoop
         const float KnockbackLock = 0.2f;
         const float Skin = 0.02f;
         const float StickDeadzone = 0.35f;
+        const int SoulMax = 99;
+        const int SoulPerHit = 11;
+        const int FocusCost = 33;
+        const float FocusTime = 0.9f;
         // Draw just behind the Knight but in front of the scenery and fog behind him.
         const float DepthOffset = 0.001f;
 
@@ -77,6 +81,10 @@ namespace LocalCoop
         float wallJumpLock;
 
         int masks;
+        int soul;
+        bool focusing;
+        float focusTimer;
+        readonly Dictionary<GameObject, float> recentGeo = new Dictionary<GameObject, float>();
         float invuln;
         bool downed;
         float downedTimer;
@@ -239,6 +247,7 @@ namespace LocalCoop
             {
                 HandleInput();
                 Simulate(dt);
+                CollectGeo();
                 CheckHurt();
                 Leash(dt);
             }
@@ -279,6 +288,42 @@ namespace LocalCoop
 
             int moveX = x > StickDeadzone ? 1 : (x < -StickDeadzone ? -1 : 0);
             int aimY = y > 0.5f ? 1 : (y < -0.5f ? -1 : 0);
+
+            // Focus: hold to spend soul and heal, standing still on the ground.
+            bool focusHeld = Device != null && Held("focus");
+            if (focusing)
+            {
+                if (!focusHeld || !grounded || controlLock > 0f)
+                {
+                    focusing = false;
+                }
+                else
+                {
+                    vel.x = 0f;
+                    focusTimer -= Time.deltaTime;
+                    if (focusTimer <= 0f)
+                    {
+                        masks = Mathf.Min(MaxMasks, masks + 1);
+                        soul -= FocusCost;
+                        currentClip = null;
+                        if (soul >= FocusCost && masks < MaxMasks) focusTimer = FocusTime;
+                        else focusing = false;
+                    }
+                    lastMoveX = 0;
+                    lastJumpDown = false;
+                    return;
+                }
+            }
+            else if (focusHeld && grounded && soul >= FocusCost && masks < MaxMasks
+                     && dashTimer <= 0f && attackAnimTimer <= 0f && controlLock <= 0f)
+            {
+                focusing = true;
+                focusTimer = FocusTime;
+                vel.x = 0f;
+                lastMoveX = 0;
+                lastJumpDown = false;
+                return;
+            }
 
             // Horizontal movement
             if (dashTimer > 0f)
@@ -353,7 +398,7 @@ namespace LocalCoop
 
         // Player 2 uses the same controller bindings as the game (Options → Controller).
         // Defaults are only used if the game's bindings can't be read.
-        static readonly string[] BoundActions = { "left", "right", "up", "down", "jump", "attack", "dash" };
+        static readonly string[] BoundActions = { "left", "right", "up", "down", "jump", "attack", "dash", "focus" };
         static readonly Dictionary<string, string[]> DefaultBindings = new Dictionary<string, string[]>
         {
             { "left", new[] { "LeftStickLeft", "DPadLeft" } },
@@ -363,6 +408,7 @@ namespace LocalCoop
             { "jump", new[] { "Action1" } },
             { "attack", new[] { "Action3" } },
             { "dash", new[] { "RightTrigger" } },
+            { "focus", new[] { "Action2" } },
         };
         readonly Dictionary<string, List<InputControlType>> bindings = new Dictionary<string, List<InputControlType>>();
         float bindingRefresh;
@@ -378,6 +424,7 @@ namespace LocalCoop
             foreach (string action in BoundActions)
             {
                 List<InputControlType> list = Game.BoundControls(action);
+                if (list.Count == 0 && action == "focus") list = Game.BoundControls("cast");
                 if (list.Count == 0)
                 {
                     foreach (string name in DefaultBindings[action])
@@ -615,6 +662,7 @@ namespace LocalCoop
 
         void RegisterNailHit()
         {
+            soul = Mathf.Min(SoulMax, soul + SoulPerHit);
             int per = LocalCoop.Settings.NailHitsPerHeal;
             if (per <= 0 || masks >= MaxMasks) return;
             hitsTowardHeal++;
@@ -645,6 +693,7 @@ namespace LocalCoop
 
         void TakeDamage(int amount, float sourceX, bool hazard)
         {
+            focusing = false;
             masks -= amount;
             invuln = InvulnTime;
             dashTimer = 0f;
@@ -705,6 +754,26 @@ namespace LocalCoop
             if (offscreenTimer > LocalCoop.Settings.LeashSeconds) SnapToHero();
         }
 
+        void CollectGeo()
+        {
+            Vector2 center = (Vector2)transform.position + offset;
+            Collider2D[] cols = Physics2D.OverlapBoxAll(center, size * 1.2f, 0f);
+            for (int i = 0; i < cols.Length; i++)
+            {
+                Collider2D c = cols[i];
+                if (c == null) continue;
+                Component geo = c.GetComponent("GeoControl");
+                if (geo == null) continue;
+                GameObject g = geo.gameObject;
+                if (!g.activeInHierarchy) continue;
+                float t;
+                if (recentGeo.TryGetValue(g, out t) && Time.time - t < 1f) continue;
+                recentGeo[g] = Time.time;
+                Game.CollectGeo(geo, hero);
+            }
+            if (recentGeo.Count > 64) recentGeo.Clear();
+        }
+
         void SnapToHero()
         {
             Vector3 h = hero.transform.position;
@@ -741,6 +810,7 @@ namespace LocalCoop
 
             string clip;
             if (downed) clip = "Idle";
+            else if (focusing) clip = "Focus";
             else if (attackAnimTimer > 0f) clip = attackClip;
             else if (dashTimer > 0f) clip = "Dash";
             else if (wallSliding) clip = "Wall Slide";
@@ -780,10 +850,17 @@ namespace LocalCoop
                 GUI.color = i < masks ? new Color(tint.r, tint.g, tint.b, 1f) : new Color(1f, 1f, 1f, 0.2f);
                 GUI.DrawTexture(new Rect(x0 + i * (s + pad), y0, s, s), Texture2D.whiteTexture);
             }
+            // Soul meter
+            float barW = max * (s + pad) - pad;
+            GUI.color = new Color(1f, 1f, 1f, 0.2f);
+            GUI.DrawTexture(new Rect(x0, y0 + s + 4f, barW, 6f), Texture2D.whiteTexture);
+            GUI.color = focusing ? new Color(1f, 1f, 1f, 1f) : new Color(0.9f, 0.9f, 0.9f, 0.9f);
+            GUI.DrawTexture(new Rect(x0, y0 + s + 4f, barW * soul / (float)SoulMax, 6f), Texture2D.whiteTexture);
+
             if (downed)
             {
                 GUI.color = Color.white;
-                GUI.Label(new Rect(x0, y0 + s + 4f, 220f, 24f),
+                GUI.Label(new Rect(x0, y0 + s + 14f, 220f, 24f),
                     "Back in " + Mathf.CeilToInt(Mathf.Max(0f, downedTimer)) + "...");
             }
             GUI.color = old;
