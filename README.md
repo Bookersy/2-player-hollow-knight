@@ -41,8 +41,9 @@ Press **F9** to turn co-op on or off.
 - Player 2 respawns 5 s after running out of masks. They heal fully at benches and when Player 1 respawns, and can Focus to heal.
 
 ## Settings
-Most settings are in game under **Options → Mods → Local Coop**: Co-op on/off, Player 1 keyboard/controller, Player 2's controller, enemies chasing Player 2, and Player 2's masks. Everything is also in
-`LocalCoop.GlobalSettings.json` includes: `P1UsesKeyboard`, `P2ControllerIndex`, `P2MaxMasks`, `RespawnSeconds`, `NailHitsPerHeal`, `LeashSeconds`, `EnemiesTargetP2`, tint colour (`TintR/G/B`) and `ToggleKey`.
+Most settings are in game under **Options → Mods → Local Coop**: Co-op on/off, Player 1 keyboard/controller, Player 2's controller, enemies chasing Player 2, and Player 2's masks.
+
+Everything is also in `LocalCoop.GlobalSettings.json` (in `%USERPROFILE%\AppData\LocalLow\Team Cherry\Hollow Knight`): `P1UsesKeyboard`, `P2ControllerIndex`, `P2MaxMasks`, `RespawnSeconds`, `NailHitsPerHeal`, `LeashSeconds`, `EnemiesTargetP2`, tint colour (`TintR/G/B`) and `ToggleKey`.
 
 ## Known limitations
 - Player 2 can bring up prompts and press up to use them, but the Knight does the action (sits, talks, rides the chain) because the game only supports one Knight. Player 2 can't use spells or go through room exits; Player 1 does that and Player 2 follows.
