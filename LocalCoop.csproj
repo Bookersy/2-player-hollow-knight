@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>LocalCoop</AssemblyName>
+    <RootNamespace>LocalCoop</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Version>0.1.0</Version>
+    <Nullable>disable</Nullable>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Your game's Managed folder. Override with: dotnet build -p:HollowKnightRefs="D:\path\to\Managed" -->
+    <HollowKnightRefs Condition="'$(HollowKnightRefs)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed</HollowKnightRefs>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="stubs/**" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Assembly-CSharp.dll must be the Modding API version (installed by Lumafly). -->
+    <Reference Include="$(HollowKnightRefs)\Assembly-CSharp*.dll" Private="false" />
+    <Reference Include="$(HollowKnightRefs)\UnityEngine*.dll" Private="false" />
+    <Reference Include="$(HollowKnightRefs)\InControl*.dll" Private="false" />
+  </ItemGroup>
+
+  <!-- After building, copy the DLL straight into the game's Mods folder. -->
+  <Target Name="CopyToMods" AfterTargets="Build" Condition="Exists('$(HollowKnightRefs)\Mods')">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(HollowKnightRefs)\Mods\LocalCoop" />
+    <Message Importance="high" Text="Copied LocalCoop.dll to $(HollowKnightRefs)\Mods\LocalCoop" />
+  </Target>
+
+</Project>
