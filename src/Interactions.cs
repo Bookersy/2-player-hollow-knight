@@ -26,6 +26,8 @@ namespace LocalCoop
         readonly List<Collider2D> armed = new List<Collider2D>();
         readonly Dictionary<Collider2D, GameObject> armedFsmObject = new Dictionary<Collider2D, GameObject>();
         readonly HashSet<string> loggedNear = new HashSet<string>();
+        readonly Dictionary<Collider2D, float> outsideFor = new Dictionary<Collider2D, float>();
+        const float ExitDelay = 0.2f;
         float timer;
         int loggedPrompts;
 
@@ -53,6 +55,21 @@ namespace LocalCoop
 
         public void Update(Vector2 p2Center, HeroController hero, float dt)
         {
+            // Every frame: keep prompts that Player 2 is standing in convinced the Knight is
+            // still there (they check each frame; doing it less often made them flicker).
+            if (armed.Count > 0 && fsmType != null)
+            {
+                Collider2D heroCol0 = hero.GetComponent<Collider2D>();
+                if (heroCol0 != null)
+                {
+                    for (int i = 0; i < armed.Count; i++)
+                    {
+                        Collider2D col = armed[i];
+                        if (col != null && col.enabled) SendBoth(col, "OnTriggerStay2D", heroCol0);
+                    }
+                }
+            }
+
             timer -= dt;
             if (timer > 0f) return;
             timer = Interval;
@@ -76,11 +93,17 @@ namespace LocalCoop
                     }
                     if (col.OverlapPoint(p2Center))
                     {
-                        // Many prompts (benches included) keep checking the Knight is still there.
-                        SendBoth(col, "OnTriggerStay2D", heroCol);
+                        outsideFor.Remove(col);
                     }
                     else
                     {
+                        // Only leave once Player 2 has been out for a moment (no flicker at the edge).
+                        float t;
+                        outsideFor.TryGetValue(col, out t);
+                        t += Interval;
+                        outsideFor[col] = t;
+                        if (t < ExitDelay) continue;
+                        outsideFor.Remove(col);
                         if (!col.OverlapPoint(heroPos)) SendBoth(col, "OnTriggerExit2D", heroCol);
                         armedFsmObject.Remove(col);
                         armed.RemoveAt(i);
@@ -198,6 +221,7 @@ namespace LocalCoop
             }
             armed.Clear();
             armedFsmObject.Clear();
+            outsideFor.Clear();
         }
 
         void SendBoth(Collider2D col, string method, Collider2D heroCol)
