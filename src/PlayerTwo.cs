@@ -85,6 +85,7 @@ namespace LocalCoop
         bool focusing;
         float focusTimer;
         readonly Dictionary<GameObject, float> recentGeo = new Dictionary<GameObject, float>();
+        readonly EnemyTargeting targeting = new EnemyTargeting();
         float invuln;
         bool downed;
         float downedTimer;
@@ -235,6 +236,7 @@ namespace LocalCoop
 
             if (downed)
             {
+                targeting.Update(gameObject, hero, false, Vector2.zero, dt);
                 downedTimer -= dt;
                 if (downedTimer <= 0f)
                 {
@@ -248,11 +250,17 @@ namespace LocalCoop
                 HandleInput();
                 Simulate(dt);
                 CollectGeo();
+                targeting.Update(gameObject, hero, true, (Vector2)transform.position + offset, dt);
                 CheckHurt();
                 Leash(dt);
             }
 
             UpdateVisuals();
+        }
+
+        void OnDestroy()
+        {
+            if (hero != null) targeting.Restore(gameObject, hero);
         }
 
         void Tick(float dt)
@@ -793,7 +801,11 @@ namespace LocalCoop
         {
             hidden = h;
             if (meshRenderer != null) meshRenderer.enabled = !h;
-            if (h) HideSlash();
+            if (h)
+            {
+                HideSlash();
+                if (hero != null) targeting.Restore(gameObject, hero);
+            }
         }
 
         void UpdateVisuals()

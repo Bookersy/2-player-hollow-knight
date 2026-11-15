@@ -31,6 +31,9 @@ namespace LocalCoop
         public float TintG = 0.8f;
         public float TintB = 1f;
 
+        /// <summary>Enemies notice and go after Player 2 when they're closer. Turn off if enemies act strangely.</summary>
+        public bool EnemiesTargetP2 = true;
+
         /// <summary>A Unity KeyCode name, e.g. "F9".</summary>
         public string ToggleKey = "F9";
     }
@@ -47,7 +50,7 @@ namespace LocalCoop
 
         public override string GetVersion()
         {
-            return "0.1.5";
+            return "0.1.6";
         }
 
         public void OnLoadGlobal(CoopSettings s)
