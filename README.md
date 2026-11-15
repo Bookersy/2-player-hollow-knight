@@ -2,11 +2,11 @@
 
 A same-screen, local 2-player mod for Hollow Knight. Player 2 is a second, blue-tinted Knight on the same screen, using their own controller.
 
-> **Version 0.2.4 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
+> **Version 0.2.5 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
 
 ## Install (no building needed)
 1. Install [Lumafly](https://themulhima.github.io/Lumafly/) and use it to install any mod (for example HKMP). This sets up the Modding API. The game needs to be on a moddable version (Steam/GOG 1.5.78).
-2. Download [`LocalCoop-0.2.4.zip`](download/LocalCoop-0.2.4.zip?raw=1) (click it, then the download button).
+2. Download [`LocalCoop-0.2.5.zip`](download/LocalCoop-0.2.5.zip?raw=1) (click it, then the download button).
 3. Copy the `LocalCoop` folder from the zip into
    `...\Hollow Knight\hollow_knight_Data\Managed\Mods\`
    (to find it in Steam: right-click Hollow Knight → Manage → Browse local files).
@@ -17,7 +17,8 @@ All versions stay in the [`download`](download) folder. The newest is at the top
 
 | Version | Download | Changes |
 |---|---|---|
-| **0.2.4** (latest) | [LocalCoop-0.2.4.zip](download/LocalCoop-0.2.4.zip?raw=1) | Focus animation for Player 2: Knight's focus poses, glow while focusing, white flash on each heal, and the Knight's focus effects. |
+| **0.2.5** (latest) | [LocalCoop-0.2.5.zip](download/LocalCoop-0.2.5.zip?raw=1) | Player 2 sits on benches on their own (the Knight isn't moved); the Knight sitting no longer makes Player 2 sit. Player 2's HUD now matches Player 1's exactly. Geo counter back in its normal place. |
+| 0.2.4 | [LocalCoop-0.2.4.zip](download/LocalCoop-0.2.4.zip?raw=1) | Focus animation for Player 2: Knight's focus poses, glow while focusing, white flash on each heal, and the Knight's focus effects. |
 | 0.2.3 | [LocalCoop-0.2.3.zip](download/LocalCoop-0.2.3.zip?raw=1) | Getting hit now shows the Knight's black hit burst and recoil on Player 2, and Player 2's masks play the break/refill animations. |
 | 0.2.2 | [LocalCoop-0.2.2.zip](download/LocalCoop-0.2.2.zip?raw=1) | Fix: Player 2's HUD no longer glows or shows stray soul-vessel bubbles. Fix: geo counter can't disappear off screen. Fix: Player 2 sits on the bench facing the same way as the Knight. |
 | 0.2.1 | [LocalCoop-0.2.1.zip](download/LocalCoop-0.2.1.zip?raw=1) | Prompts whose script sits on a parent object (e.g. some Inspect doors) now appear for Player 2. More detailed log for prompts that still don't. |
@@ -52,7 +53,7 @@ Most settings are in game under **Options → Mods → Local Coop**: Co-op on/of
 Everything is also in `LocalCoop.GlobalSettings.json` (in `%USERPROFILE%\AppData\LocalLow\Team Cherry\Hollow Knight`): `P1UsesKeyboard`, `P2ControllerIndex`, `P2MaxMasks`, `RespawnSeconds`, `NailHitsPerHeal`, `LeashSeconds`, `EnemiesTargetP2`, tint colour (`TintR/G/B`) and `ToggleKey`.
 
 ## Known limitations
-- Player 2 can bring up prompts and press up to use them, but the Knight does the action (sits, talks, rides the chain) because the game only supports one Knight. Player 2 can't use spells or go through room exits; Player 1 does that and Player 2 follows.
+- Player 2 can sit on benches by themselves (only the Knight's sit saves the game). For other prompts (talk, inspect, ride the chain) the Knight does the action, because the game only supports one Knight. Player 2 can't use spells or go through room exits; Player 1 does that and Player 2 follows.
 - Player 2's nail damages enemies but can't break walls or hit levers.
 - Enemies going after Player 2 is experimental and works best on enemies whose behaviour is a PlayMaker FSM. Some enemies may still only chase Player 1.
 - Only Player 1 can use the menus.

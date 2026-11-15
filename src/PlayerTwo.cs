@@ -88,7 +88,7 @@ namespace LocalCoop
         readonly EnemyTargeting targeting = new EnemyTargeting();
         readonly Interactions interactions = new Interactions();
         readonly P2Hud hud = new P2Hud();
-        bool sittingWithHero;
+        bool p2Sitting;
         float hurtTimer;
         float focusGetTimer;
         float healFlash;
@@ -233,27 +233,26 @@ namespace LocalCoop
                 FullHeal();
             }
 
-            bool atBench = PlayerData.instance != null && PlayerData.instance.GetBool("atBench");
-            if (atBench)
+            if (PlayerData.instance != null && PlayerData.instance.GetBool("atBench"))
             {
+                FullHeal(); // resting at a bench heals both players
+            }
+
+            if (p2Sitting)
+            {
+                // Player 2 sitting on a bench on their own: heal, stand up on any input.
                 FullHeal();
-                if (!sittingWithHero)
+                vel = Vector2.zero;
+                if (Device != null && (Pressed("jump") || Pressed("attack") || Pressed("dash") ||
+                                       Pressed("left") || Pressed("right") || Pressed("down")))
                 {
-                    // Sit down on the bench next to the Knight.
-                    sittingWithHero = true;
-                    Vector3 h = hero.transform.position;
-                    facingRight = hero.cState.facingRight;
-                    transform.position = new Vector3(h.x + (facingRight ? -0.75f : 0.75f), h.y, z);
-                    vel = Vector2.zero;
-                    focusing = false;
+                    p2Sitting = false;
                     currentClip = null;
                 }
-                interactions.ReleaseAll(hero);
                 UpdateVisuals();
                 hud.Update(masks, MaxMasks, tint, true, dt);
                 return;
             }
-            sittingWithHero = false;
 
             Tick(dt);
             ObserveHeroSpeed();
@@ -332,8 +331,23 @@ namespace LocalCoop
             int aimY = y > 0.5f ? 1 : (y < -0.5f ? -1 : 0);
 
             // Up at a prompt: pass the press on to the game for a moment.
-            if (Device != null && interactions.P2InRange && Pressed("up"))
+            if (Device != null && interactions.P2InRange && Pressed("up") && grounded)
             {
+                Transform bench = interactions.BenchInRange();
+                if (bench != null)
+                {
+                    // Player 2 sits on the bench themselves; the Knight isn't moved.
+                    p2Sitting = true;
+                    facingRight = hero.cState.facingRight;
+                    Vector3 bp = bench.position;
+                    transform.position = new Vector3(bp.x, transform.position.y, z);
+                    vel = Vector2.zero;
+                    focusing = false;
+                    currentClip = null;
+                    interactions.ReleaseAll(hero);
+                    LocalCoop.Info("Player 2 sat on '" + bench.name + "' at " + bp + " (Player 2 at " + transform.position + ")");
+                    return;
+                }
                 CoopManager.LendP1Device = Device;
                 CoopManager.LendUntil = Time.time + 0.25f;
             }
@@ -868,6 +882,7 @@ namespace LocalCoop
             if (meshRenderer != null) meshRenderer.enabled = !h;
             if (h)
             {
+                p2Sitting = false;
                 HideSlash();
                 if (hero != null) targeting.Restore(gameObject, hero);
                 interactions.ReleaseAll(hero);
@@ -896,7 +911,7 @@ namespace LocalCoop
             meshRenderer.enabled = !flicker;
 
             string clip;
-            if (sittingWithHero) clip = SitClip();
+            if (p2Sitting) clip = SitClip();
             else if (downed) clip = "Idle";
             else if (hurtTimer > 0f) clip = "Recoil";
             else if (focusGetTimer > 0f) clip = FirstClip("Focus Get Once", "Focus Get", "Focus");

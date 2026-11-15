@@ -34,6 +34,23 @@ namespace LocalCoop
             get { return armed.Count > 0; }
         }
 
+        /// <summary>The bench Player 2 is standing at, if any.</summary>
+        public Transform BenchInRange()
+        {
+            foreach (Collider2D col in armed)
+            {
+                GameObject fsmGo;
+                if (col == null || !armedFsmObject.TryGetValue(col, out fsmGo) || fsmGo == null) continue;
+                foreach (MonoBehaviour mb in fsmGo.GetComponents<MonoBehaviour>())
+                {
+                    if (mb == null || !fsmType.IsInstanceOfType(mb)) continue;
+                    string n = nameProp == null ? "" : (nameProp.GetValue(mb, null) as string ?? "");
+                    if (n.Contains("Bench")) return fsmGo.transform;
+                }
+            }
+            return null;
+        }
+
         public void Update(Vector2 p2Center, HeroController hero, float dt)
         {
             timer -= dt;
