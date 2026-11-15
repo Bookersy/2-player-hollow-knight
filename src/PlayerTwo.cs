@@ -89,6 +89,7 @@ namespace LocalCoop
         readonly Interactions interactions = new Interactions();
         readonly P2Hud hud = new P2Hud();
         bool sittingWithHero;
+        float hurtTimer;
         float invuln;
         bool downed;
         float downedTimer;
@@ -301,6 +302,7 @@ namespace LocalCoop
             controlLock -= dt;
             wallJumpLock -= dt;
             invuln -= dt;
+            hurtTimer -= dt;
         }
 
         // ---------------------------------------------------------------- input
@@ -735,6 +737,9 @@ namespace LocalCoop
         void TakeDamage(int amount, float sourceX, bool hazard)
         {
             focusing = false;
+            SpawnHitEffect(amount > 1);
+            hurtTimer = 0.3f;
+            currentClip = null;
             masks -= amount;
             invuln = InvulnTime;
             dashTimer = 0f;
@@ -759,6 +764,25 @@ namespace LocalCoop
             float away = transform.position.x >= sourceX ? 1f : -1f;
             vel = new Vector2(away * 10f, 10f);
             controlLock = KnockbackLock;
+        }
+
+        /// <summary>The Knight's own "took a hit" burst (the black cloud), at Player 2.</summary>
+        void SpawnHitEffect(bool doubleHit)
+        {
+            try
+            {
+                var prefab = Game.Get(hero, doubleHit ? "takeHitDoublePrefab" : "takeHitPrefab") as GameObject;
+                if (prefab == null) prefab = Game.Get(hero, "takeHitPrefab") as GameObject;
+                if (prefab == null) return;
+                Vector3 p = transform.position;
+                GameObject fx = UnityEngine.Object.Instantiate(prefab, new Vector3(p.x, p.y, prefab.transform.position.z), Quaternion.identity);
+                fx.SetActive(true);
+                UnityEngine.Object.Destroy(fx, 3f);
+            }
+            catch (System.Exception e)
+            {
+                LocalCoop.Info("Player 2 hit effect error: " + e.Message);
+            }
         }
 
         void FullHeal()
@@ -857,6 +881,7 @@ namespace LocalCoop
             string clip;
             if (sittingWithHero) clip = SitClip();
             else if (downed) clip = "Idle";
+            else if (hurtTimer > 0f) clip = "Recoil";
             else if (focusing) clip = "Focus";
             else if (attackAnimTimer > 0f) clip = attackClip;
             else if (dashTimer > 0f) clip = "Dash";

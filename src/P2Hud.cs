@@ -29,6 +29,11 @@ namespace LocalCoop
 
         public bool Ready { get; private set; }
 
+        int lastMaskCount = -1;
+        readonly List<float> maskAnimTimers = new List<float>();
+        string breakClip, refillClip;
+        bool clipsChecked;
+
         public void Update(int maskCount, int maxMasks, Color tint, bool visible, float dt)
         {
             if (!Ready)
@@ -52,6 +57,19 @@ namespace LocalCoop
             }
 
             while (masks.Count < maxMasks) masks.Add(MakeMask(masks.Count));
+            while (maskAnimTimers.Count < masks.Count) maskAnimTimers.Add(0f);
+            for (int i = 0; i < maskAnimTimers.Count; i++) maskAnimTimers[i] -= dt;
+
+            // Break / refill animations when Player 2 loses or gains masks.
+            if (lastMaskCount >= 0 && maskCount != lastMaskCount)
+            {
+                CheckClips();
+                if (maskCount < lastMaskCount)
+                    for (int i = maskCount; i < lastMaskCount && i < masks.Count; i++) PlayMask(i, breakClip);
+                else
+                    for (int i = lastMaskCount; i < maskCount && i < masks.Count; i++) PlayMask(i, refillClip);
+            }
+            lastMaskCount = maskCount;
             // Multipliers: keep each piece's own colour and transparency, just tint it.
             Color full = new Color(Mathf.Lerp(1f, tint.r, 0.35f), Mathf.Lerp(1f, tint.g, 0.35f), Mathf.Lerp(1f, tint.b, 0.35f), 1f);
             Color empty = new Color(0.18f, 0.18f, 0.24f, 1f);
@@ -60,7 +78,8 @@ namespace LocalCoop
                 if (masks[i] == null) continue;
                 bool show = visible && i < maxMasks;
                 if (masks[i].activeSelf != show) masks[i].SetActive(show);
-                if (show) SetColor(masks[i], i < maskCount ? full : empty);
+                // While a break animation plays, don't darken it yet.
+                if (show) SetColor(masks[i], (i < maskCount || maskAnimTimers[i] > 0f) ? full : empty);
             }
             if (orb != null)
             {
@@ -93,12 +112,52 @@ namespace LocalCoop
             return true;
         }
 
+        void CheckClips()
+        {
+            if (clipsChecked || maskTemplate == null) return;
+            clipsChecked = true;
+            var names = new List<string>();
+            foreach (tk2dSpriteAnimator an in maskTemplate.GetComponentsInChildren<tk2dSpriteAnimator>(true))
+            {
+                var clips = Game.Get(an.Library, "clips") as Array;
+                if (clips == null) continue;
+                foreach (object c in clips)
+                {
+                    string n = Game.Get(c, "name") as string;
+                    if (!string.IsNullOrEmpty(n) && !names.Contains(n)) names.Add(n);
+                }
+            }
+            foreach (string n in names)
+            {
+                string l = n.ToLower();
+                if (breakClip == null && (l.Contains("break") || l.Contains("hurt") || l.Contains("damage"))) breakClip = n;
+                if (refillClip == null && (l.Contains("refill") || l.Contains("heal") || l.Contains("fill") || l.Contains("appear"))) refillClip = n;
+            }
+            LocalCoop.Info("Mask animations: " + string.Join(", ", names.ToArray()) +
+                           " -> break '" + breakClip + "', refill '" + refillClip + "'");
+        }
+
+        void PlayMask(int i, string clip)
+        {
+            if (string.IsNullOrEmpty(clip) || masks[i] == null) return;
+            foreach (tk2dSpriteAnimator an in masks[i].GetComponentsInChildren<tk2dSpriteAnimator>(true))
+            {
+                if (an != null && an.GetClipByName(clip) != null)
+                {
+                    an.Play(clip);
+                    maskAnimTimers[i] = 0.6f;
+                }
+            }
+        }
+
         public void Clear()
         {
             foreach (GameObject m in masks)
                 if (m != null) UnityEngine.Object.Destroy(m);
             masks.Clear();
             originalColors.Clear();
+            maskAnimTimers.Clear();
+            lastMaskCount = -1;
             if (orb != null) UnityEngine.Object.Destroy(orb);
             orb = null;
             if (geo != null && geoMoved) geo.position = geoOriginal;
