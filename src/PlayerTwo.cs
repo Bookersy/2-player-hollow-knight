@@ -13,13 +13,9 @@ namespace LocalCoop
     public class PlayerTwo : MonoBehaviour
     {
         // Movement roughly matched to the Knight.
-        const float RunSpeed = 8.3f;
-        const float JumpSpeed = 16.65f;
         const float JumpHoldMax = 0.2f;
         const float JumpCutSpeed = 4f;
         const float Gravity = 55f;
-        const float MaxFallSpeed = 20.9f;
-        const float DashSpeed = 20f;
         const float DashTime = 0.25f;
         const float DashCooldown = 0.6f;
         const float AttackCooldown = 0.41f;
@@ -33,8 +29,16 @@ namespace LocalCoop
         const float KnockbackLock = 0.2f;
         const float Skin = 0.02f;
         const float StickDeadzone = 0.35f;
+        // Draw just behind the Knight but in front of the scenery and fog behind him.
+        const float DepthOffset = 0.001f;
 
         public InputDevice Device;
+
+        // Copied from the Knight's own HeroController values in Init (these are fallbacks).
+        float RunSpeed = 8.3f;
+        float JumpSpeed = 16.65f;
+        float MaxFallSpeed = 20.9f;
+        float DashSpeed = 20f;
 
         HeroController hero;
         tk2dSprite sprite;
@@ -117,7 +121,7 @@ namespace LocalCoop
             if (heroRenderer != null && meshRenderer != null)
             {
                 meshRenderer.sortingLayerID = heroRenderer.sortingLayerID;
-                meshRenderer.sortingOrder = heroRenderer.sortingOrder - 1;
+                meshRenderer.sortingOrder = heroRenderer.sortingOrder;
             }
 
             var heroBox = hero.GetComponent<BoxCollider2D>();
@@ -130,10 +134,17 @@ namespace LocalCoop
             terrainMask = LayerMask.GetMask("Terrain");
             if (terrainMask == 0) terrainMask = 1 << 8;
 
+            RunSpeed = HeroFloat("RUN_SPEED", RunSpeed);
+            JumpSpeed = HeroFloat("JUMP_SPEED", JumpSpeed);
+            MaxFallSpeed = HeroFloat("MAX_FALL_VELOCITY", MaxFallSpeed);
+            DashSpeed = HeroFloat("DASH_SPEED", DashSpeed);
+            LocalCoop.Info("Player 2 speeds: run " + RunSpeed + ", jump " + JumpSpeed +
+                           ", fall " + MaxFallSpeed + ", dash " + DashSpeed);
+
             var s = LocalCoop.Settings;
             tint = new Color(s.TintR, s.TintG, s.TintB, 1f);
             masks = MaxMasks;
-            z = hero.transform.position.z;
+            z = hero.transform.position.z + DepthOffset;
             SetHidden(true);
         }
 
@@ -621,7 +632,7 @@ namespace LocalCoop
         void SnapToHero()
         {
             Vector3 h = hero.transform.position;
-            z = h.z;
+            z = h.z + DepthOffset;
             transform.position = new Vector3(h.x, h.y, z);
             vel = Vector2.zero;
             offscreenTimer = 0f;
@@ -702,6 +713,13 @@ namespace LocalCoop
         }
 
         // ---------------------------------------------------------------- helpers
+
+        float HeroFloat(string field, float fallback)
+        {
+            object v = Game.Get(hero, field);
+            if (v is float && (float)v > 0f) return (float)v;
+            return fallback;
+        }
 
         static bool HasAbility(string field)
         {
