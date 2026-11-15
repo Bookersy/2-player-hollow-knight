@@ -90,6 +90,9 @@ namespace LocalCoop
         readonly P2Hud hud = new P2Hud();
         bool sittingWithHero;
         float hurtTimer;
+        float focusGetTimer;
+        float healFlash;
+        GameObject focusFx;
         float invuln;
         bool downed;
         float downedTimer;
@@ -184,6 +187,7 @@ namespace LocalCoop
                 if (fx != null) slashes[name] = fx;
             }
             LocalCoop.Info("Player 2 slash effects found: " + slashes.Count + "/4");
+            focusFx = CloneHeroEffect("Focus Effects");
 
             var s = LocalCoop.Settings;
             tint = new Color(s.TintR, s.TintG, s.TintB, 1f);
@@ -303,6 +307,8 @@ namespace LocalCoop
             wallJumpLock -= dt;
             invuln -= dt;
             hurtTimer -= dt;
+            focusGetTimer -= dt;
+            healFlash -= dt;
         }
 
         // ---------------------------------------------------------------- input
@@ -349,6 +355,8 @@ namespace LocalCoop
                         masks = Mathf.Min(MaxMasks, masks + 1);
                         soul -= FocusCost;
                         currentClip = null;
+                        focusGetTimer = 0.35f;
+                        healFlash = 0.2f;
                         if (soul >= FocusCost && masks < MaxMasks) focusTimer = FocusTime;
                         else focusing = false;
                     }
@@ -873,7 +881,16 @@ namespace LocalCoop
 
             Color c = tint;
             if (downed) c.a = 0.3f;
+            if (focusing)
+            {
+                float progress = 1f - Mathf.Max(0f, focusTimer) / FocusTime;
+                float pulse = 0.25f + 0.35f * progress;
+                c = new Color(Mathf.Lerp(c.r, 1f, pulse), Mathf.Lerp(c.g, 1f, pulse), Mathf.Lerp(c.b, 1f, pulse), c.a);
+            }
+            if (healFlash > 0f) c = new Color(1f, 1f, 1f, c.a);
             sprite.color = c;
+
+            if (focusFx != null && focusFx.activeSelf != focusing) focusFx.SetActive(focusing);
 
             bool flicker = invuln > 0f && !downed && Mathf.Repeat(Time.time, 0.2f) < 0.1f;
             meshRenderer.enabled = !flicker;
@@ -882,6 +899,7 @@ namespace LocalCoop
             if (sittingWithHero) clip = SitClip();
             else if (downed) clip = "Idle";
             else if (hurtTimer > 0f) clip = "Recoil";
+            else if (focusGetTimer > 0f) clip = FirstClip("Focus Get Once", "Focus Get", "Focus");
             else if (focusing) clip = "Focus";
             else if (attackAnimTimer > 0f) clip = attackClip;
             else if (dashTimer > 0f) clip = "Dash";
@@ -1009,6 +1027,66 @@ namespace LocalCoop
                 fx.Renderer.enabled = false;
             }
             return fx;
+        }
+
+        string FirstClip(params string[] names)
+        {
+            foreach (string n in names)
+                if (anim.GetClipByName(n) != null) return n;
+            return "Idle";
+        }
+
+        /// <summary>
+        /// A visual-only copy of one of the Knight's effect children (scripts removed),
+        /// attached to Player 2 and hidden until used. Logs what's inside for tuning.
+        /// </summary>
+        GameObject CloneHeroEffect(string childName)
+        {
+            try
+            {
+                Transform src = hero.transform.Find(childName);
+                if (src == null)
+                {
+                    LocalCoop.Info("Player 2 effect '" + childName + "' not found on the Knight.");
+                    return null;
+                }
+                var holder = new GameObject("LocalCoop holder");
+                holder.SetActive(false);
+                GameObject c = UnityEngine.Object.Instantiate(src.gameObject, holder.transform);
+                var clips = new List<string>();
+                foreach (MonoBehaviour mb in c.GetComponentsInChildren<MonoBehaviour>(true))
+                {
+                    if (mb == null) continue;
+                    string n = mb.GetType().Name;
+                    if (n.StartsWith("tk2d"))
+                    {
+                        var an = mb as tk2dSpriteAnimator;
+                        if (an != null)
+                        {
+                            var arr = Game.Get(an.Library, "clips") as System.Array;
+                            if (arr != null)
+                                foreach (object clip in arr)
+                                    clips.Add(mb.gameObject.name + ":" + (Game.Get(clip, "name") as string));
+                        }
+                        continue;
+                    }
+                    if (n.StartsWith("ParticleSystem")) continue;
+                    UnityEngine.Object.DestroyImmediate(mb);
+                }
+                c.transform.parent = transform;
+                c.transform.localPosition = src.localPosition;
+                c.transform.localRotation = src.localRotation;
+                c.transform.localScale = src.localScale;
+                UnityEngine.Object.Destroy(holder);
+                c.SetActive(false);
+                LocalCoop.Info("Player 2 effect '" + childName + "' copied; animations: " + string.Join(", ", clips.ToArray()));
+                return c;
+            }
+            catch (System.Exception e)
+            {
+                LocalCoop.Info("Player 2 effect '" + childName + "' error: " + e.Message);
+                return null;
+            }
         }
 
         void ShowSlash(string clip)
