@@ -93,6 +93,10 @@ namespace LocalCoop
         float focusGetTimer;
         float healFlash;
         GameObject focusFx;
+        readonly P2Effects fx = new P2Effects();
+        bool wasGrounded = true;
+        float lastFallSpeed;
+        float runDustTimer;
         float invuln;
         bool downed;
         float downedTimer;
@@ -188,6 +192,7 @@ namespace LocalCoop
             }
             LocalCoop.Info("Player 2 slash effects found: " + slashes.Count + "/4");
             focusFx = CloneHeroEffect("Focus Effects");
+            fx.Init(hero, gameObject);
 
             var s = LocalCoop.Settings;
             tint = new Color(s.TintR, s.TintG, s.TintB, 1f);
@@ -242,6 +247,7 @@ namespace LocalCoop
             {
                 // Player 2 sitting on a bench on their own: heal, stand up on any input.
                 FullHeal();
+                fx.StopLoops();
                 vel = Vector2.zero;
                 if (Device != null && (Pressed("jump") || Pressed("attack") || Pressed("dash") ||
                                        Pressed("left") || Pressed("right") || Pressed("down")))
@@ -263,6 +269,7 @@ namespace LocalCoop
             {
                 targeting.Update(gameObject, hero, false, Vector2.zero, dt);
                 interactions.ReleaseAll(hero);
+                fx.StopLoops();
                 downedTimer -= dt;
                 if (downedTimer <= 0f)
                 {
@@ -274,7 +281,9 @@ namespace LocalCoop
             else
             {
                 HandleInput();
+                float fallSpeed = vel.y;
                 Simulate(dt);
+                MovementFeel(fallSpeed, dt);
                 CollectGeo();
                 targeting.Update(gameObject, hero, true, (Vector2)transform.position + offset, dt);
                 interactions.Update((Vector2)transform.position + offset, hero, dt);
@@ -409,6 +418,8 @@ namespace LocalCoop
                 if (grounded || coyote > 0f)
                 {
                     DoJump(JumpSpeed);
+                    fx.Sound("jump");
+                    fx.Spawn("jumpEffectPrefab", transform.position, facingRight);
                 }
                 else if (wallSliding)
                 {
@@ -417,6 +428,7 @@ namespace LocalCoop
                     facingRight = wallDir < 0;
                     wallJumpLock = WallJumpLockTime;
                     wallSliding = false;
+                    fx.Sound("walljump");
                     usedDoubleJump = false;
                     usedAirDash = false;
                 }
@@ -424,6 +436,7 @@ namespace LocalCoop
                 {
                     usedDoubleJump = true;
                     DoJump(JumpSpeed * 0.9f);
+                    fx.Sound("jump");
                 }
             }
 
@@ -445,6 +458,8 @@ namespace LocalCoop
                 if (!grounded) usedAirDash = true;
                 jumping = false;
                 vel = new Vector2((facingRight ? 1f : -1f) * DashSpeed, 0f);
+                fx.Sound("dash");
+                fx.DashBurst(transform.position, facingRight);
             }
 
             // Attack
@@ -543,6 +558,30 @@ namespace LocalCoop
                 if (c != null && c.WasPressed) return true;
             }
             return false;
+        }
+
+        void MovementFeel(float fallSpeedBefore, float dt)
+        {
+            if (!wasGrounded && grounded)
+            {
+                bool hard = fallSpeedBefore < -MaxFallSpeed * 0.95f;
+                fx.Sound(hard ? "hardLanding" : "softLanding");
+                fx.Spawn(hard ? "hardLandingEffectPrefab" : "softLandingEffectPrefab", transform.position, facingRight);
+            }
+            wasGrounded = grounded;
+
+            bool running = grounded && Mathf.Abs(vel.x) > 0.1f && dashTimer <= 0f && !focusing;
+            fx.SetRunning(running);
+            if (running)
+            {
+                runDustTimer -= dt;
+                if (runDustTimer <= 0f)
+                {
+                    runDustTimer = 0.35f;
+                    fx.Spawn("runEffectPrefab", transform.position, facingRight, 1f);
+                }
+            }
+            fx.SetWallSliding(wallSliding, facingRight);
         }
 
         void DoJump(float speed)
@@ -688,6 +727,7 @@ namespace LocalCoop
             }
             currentClip = null; // force the slash animation to restart
             ShowSlash(attackClip);
+            fx.Sound("slash" + (attackClip == "SlashAlt" ? "AltSlash" : attackClip));
 
             bool downSlash = direction == 270f;
             bool pogo = false;
@@ -760,6 +800,8 @@ namespace LocalCoop
         {
             focusing = false;
             SpawnHitEffect(amount > 1);
+            fx.Sound("takeHit");
+            fx.HitFeel();
             hurtTimer = 0.3f;
             currentClip = null;
             masks -= amount;
@@ -882,6 +924,7 @@ namespace LocalCoop
             if (meshRenderer != null) meshRenderer.enabled = !h;
             if (h)
             {
+                fx.StopLoops();
                 p2Sitting = false;
                 HideSlash();
                 if (hero != null) targeting.Restore(gameObject, hero);
