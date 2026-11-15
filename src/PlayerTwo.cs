@@ -250,7 +250,7 @@ namespace LocalCoop
                     currentClip = null;
                 }
                 UpdateVisuals();
-                hud.Update(masks, MaxMasks, tint, true, dt);
+                hud.Update(masks, MaxMasks, tint, true, dt, soul);
                 return;
             }
 
@@ -283,7 +283,7 @@ namespace LocalCoop
             }
 
             UpdateVisuals();
-            hud.Update(masks, MaxMasks, tint, true, dt);
+            hud.Update(masks, MaxMasks, tint, true, dt, soul);
         }
 
         void OnDestroy()
@@ -964,6 +964,17 @@ namespace LocalCoop
 
             Color old = GUI.color;
             Rect bar;
+            if (hud.VesselShowsSoul)
+            {
+                // Player 2's own vessel shows their soul now.
+                if (downed && hud.SoulBarRect(max, out bar))
+                {
+                    GUI.color = Color.white;
+                    GUI.Label(new Rect(bar.x, bar.y, 220f, 24f), "Back in " + Mathf.CeilToInt(Mathf.Max(0f, downedTimer)) + "...");
+                }
+                GUI.color = old;
+                return;
+            }
             if (hud.SoulBarRect(max, out bar))
             {
                 // The copied HUD shows masks and the vessel; add soul and the respawn timer.

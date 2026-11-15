@@ -32,12 +32,36 @@ namespace LocalCoop
 
         public bool Ready { get; private set; }
 
+        /// <summary>True once Player 2's vessel shows their own soul (so the thin bar isn't needed).</summary>
+        public bool VesselShowsSoul
+        {
+            get { return Ready && orb != null && fillLearned; }
+        }
+
+        // ---- learning how the Knight's vessel shows soul
+        struct Snap
+        {
+            public bool Active, Enabled;
+            public Vector3 Pos, Scale;
+            public Color Color;
+        }
+        readonly Dictionary<int, Snap[]> soulSamples = new Dictionary<int, Snap[]>();
+        readonly HashSet<int> fillParts = new HashSet<int>();
+        bool fillLearned;
+        int lastP1Soul = -1;
+        float soulSettled;
+
         int lastMaskCount = -1;
         readonly List<float> maskAnimTimers = new List<float>();
         string breakClip, refillClip;
         bool clipsChecked;
 
         public void Update(int maskCount, int maxMasks, Color tint, bool visible, float dt)
+        {
+            Update(maskCount, maxMasks, tint, visible, dt, -1);
+        }
+
+        public void Update(int maskCount, int maxMasks, Color tint, bool visible, float dt, int p2Soul)
         {
             if (!Ready)
             {
@@ -78,8 +102,10 @@ namespace LocalCoop
             Color empty = new Color(0.22f, 0.22f, 0.26f, 1f);
             if (visible)
             {
-                MirrorPairs(orbPairs);
-                foreach (var pairs in maskPairs) MirrorPairs(pairs);
+                LearnVessel(dt);
+                MirrorPairs(orbPairs, fillLearned ? fillParts : null);
+                if (fillLearned && p2Soul >= 0) ApplySoul(p2Soul);
+                foreach (var pairs in maskPairs) MirrorPairs(pairs, null);
             }
             for (int i = 0; i < masks.Count; i++)
             {
@@ -168,6 +194,10 @@ namespace LocalCoop
             originalColors.Clear();
             maskAnimTimers.Clear();
             lastMaskCount = -1;
+            soulSamples.Clear();
+            fillParts.Clear();
+            fillLearned = false;
+            lastP1Soul = -1;
             if (orb != null) UnityEngine.Object.Destroy(orb);
             orb = null;
             if (geo != null && geoMoved) geo.position = geoOriginal;
@@ -273,17 +303,123 @@ namespace LocalCoop
 
         void CenterGeo()
         {
-            // Left in its normal place for now; log where things are so it can be moved safely.
-            if (geo == null || maskTemplate == null || geoMoved) return;
-            geoMoved = true;
-            geoOriginal = geo.position;
-            Renderer[] rs = geo.GetComponentsInChildren<Renderer>();
-            var parts = new List<string>();
-            foreach (Renderer r in rs)
-                if (r != null) parts.Add(r.gameObject.name + (r.enabled ? "" : "(off)") + " " + r.bounds.center + "/" + r.bounds.size);
-            LocalCoop.Info("Geo counter at " + geo.position + " (parent " + (geo.parent != null ? geo.parent.name : "-") +
-                           "), masks at " + maskTemplate.transform.position + ", HUD camera x " + CenterX() +
-                           "; parts: " + string.Join("; ", parts.ToArray()));
+            if (geo == null || maskTemplate == null || hudCam == null) return;
+            if (!geoMoved)
+            {
+                geoMoved = true;
+                geoOriginal = geo.position;
+                LocalCoop.Info("Geo counter at " + geo.position + " (parent " + (geo.parent != null ? geo.parent.name : "-") +
+                               "), masks at " + maskTemplate.transform.position + ", HUD camera x " + CenterX());
+            }
+
+            // The counter is drawn from its left edge (icon) rightwards; about 3 mask-widths wide.
+            float halfWidth = Mathf.Abs(maskDx) * 1.6f;
+            Vector3 target = new Vector3(CenterX() - halfWidth, maskTemplate.transform.position.y, geoOriginal.z);
+
+            Vector3 vp = hudCam.WorldToViewportPoint(target);
+            bool onScreen = vp.x > 0.2f && vp.x < 0.8f && vp.y > 0.5f && vp.y < 1f;
+            Vector3 want = onScreen ? target : geoOriginal;
+            if ((geo.position - want).sqrMagnitude > 0.0001f)
+            {
+                geo.position = want;
+                if (!onScreen) LocalCoop.Info("Geo counter: centred spot " + target + " looked off screen, kept it in place.");
+            }
+        }
+
+        /// <summary>
+        /// Records how each part of the Knight's vessel looks at each soul level (once it
+        /// has settled), and works out which parts are the soul fill: the ones that differ
+        /// between soul levels.
+        /// </summary>
+        void LearnVessel(float dt)
+        {
+            if (orbPairs.Count == 0 || PlayerData.instance == null) return;
+            int soul = PlayerData.instance.GetInt("MPCharge");
+            if (soul != lastP1Soul)
+            {
+                lastP1Soul = soul;
+                soulSettled = 0f;
+                return;
+            }
+            soulSettled += dt;
+            if (soulSettled < 0.8f || soulSamples.ContainsKey(soul)) return;
+
+            var snaps = new Snap[orbPairs.Count];
+            for (int i = 0; i < orbPairs.Count; i++) snaps[i] = Take(orbPairs[i].Key);
+            soulSamples[soul] = snaps;
+            if (soulSamples.Count < 2) return;
+
+            fillParts.Clear();
+            Snap[] first = null;
+            foreach (var kv in soulSamples)
+            {
+                if (first == null) { first = kv.Value; continue; }
+                for (int i = 0; i < first.Length; i++)
+                    if (Differs(first[i], kv.Value[i])) fillParts.Add(i);
+            }
+            bool was = fillLearned;
+            fillLearned = fillParts.Count > 0;
+            if (fillLearned && !was)
+            {
+                var names = new List<string>();
+                foreach (int i in fillParts) if (orbPairs[i].Key != null) names.Add(orbPairs[i].Key.name);
+                LocalCoop.Info("Player 2 vessel: soul fill parts are " + string.Join(", ", names.ToArray()));
+            }
+        }
+
+        static Snap Take(Transform t)
+        {
+            var snap = new Snap();
+            if (t == null) return snap;
+            snap.Active = t.gameObject.activeSelf;
+            snap.Pos = t.localPosition;
+            snap.Scale = t.localScale;
+            var r = t.GetComponent<Renderer>();
+            snap.Enabled = r == null || r.enabled;
+            var sp = t.GetComponent<tk2dSprite>();
+            snap.Color = sp != null ? sp.color : Color.white;
+            return snap;
+        }
+
+        static bool Differs(Snap a, Snap b)
+        {
+            return a.Active != b.Active || a.Enabled != b.Enabled ||
+                   Mathf.Abs(a.Pos.x - b.Pos.x) + Mathf.Abs(a.Pos.y - b.Pos.y) > 0.01f ||
+                   Mathf.Abs(a.Scale.x - b.Scale.x) + Mathf.Abs(a.Scale.y - b.Scale.y) > 0.01f ||
+                   Mathf.Abs(a.Color.a - b.Color.a) > 0.05f;
+        }
+
+        /// <summary>Sets the fill parts of Player 2's vessel to match Player 2's soul.</summary>
+        void ApplySoul(int soul)
+        {
+            // Nearest recorded levels below and above.
+            int lo = -1, hi = -1;
+            foreach (int k in soulSamples.Keys)
+            {
+                if (k <= soul && (lo < 0 || k > lo)) lo = k;
+                if (k >= soul && (hi < 0 || k < hi)) hi = k;
+            }
+            if (lo < 0) lo = hi;
+            if (hi < 0) hi = lo;
+            if (lo < 0) return;
+            float t = hi == lo ? 0f : (soul - lo) / (float)(hi - lo);
+            Snap[] a = soulSamples[lo], b = soulSamples[hi];
+
+            foreach (int i in fillParts)
+            {
+                Transform dst = orbPairs[i].Value;
+                if (dst == null) continue;
+                Snap near = t < 0.5f ? a[i] : b[i];
+                if (dst.gameObject.activeSelf != near.Active) dst.gameObject.SetActive(near.Active);
+                if (!near.Active) continue;
+                dst.localPosition = new Vector3(Mathf.Lerp(a[i].Pos.x, b[i].Pos.x, t), Mathf.Lerp(a[i].Pos.y, b[i].Pos.y, t), a[i].Pos.z);
+                dst.localScale = new Vector3(Mathf.Lerp(a[i].Scale.x, b[i].Scale.x, t), Mathf.Lerp(a[i].Scale.y, b[i].Scale.y, t), a[i].Scale.z);
+                var r = dst.GetComponent<Renderer>();
+                if (r != null) r.enabled = near.Enabled;
+                var sp = dst.GetComponent<tk2dSprite>();
+                if (sp != null)
+                    sp.color = new Color(near.Color.r, near.Color.g, near.Color.b, Mathf.Lerp(a[i].Color.a, b[i].Color.a, t));
+            }
         }
 
         void Pair(Transform src, Transform copy, List<KeyValuePair<Transform, Transform>> pairs, bool root)
@@ -294,10 +430,12 @@ namespace LocalCoop
         }
 
         /// <summary>Copy shown/hidden state, frame and colour from the game's piece to ours.</summary>
-        void MirrorPairs(List<KeyValuePair<Transform, Transform>> pairs)
+        void MirrorPairs(List<KeyValuePair<Transform, Transform>> pairs, HashSet<int> skip)
         {
-            foreach (var kv in pairs)
+            for (int idx = 0; idx < pairs.Count; idx++)
             {
+                if (skip != null && skip.Contains(idx)) continue;
+                var kv = pairs[idx];
                 Transform src = kv.Key, dst = kv.Value;
                 if (src == null || dst == null) continue;
                 if (dst.gameObject.activeSelf != src.gameObject.activeSelf) dst.gameObject.SetActive(src.gameObject.activeSelf);
