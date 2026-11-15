@@ -86,6 +86,7 @@ namespace LocalCoop
         float focusTimer;
         readonly Dictionary<GameObject, float> recentGeo = new Dictionary<GameObject, float>();
         readonly EnemyTargeting targeting = new EnemyTargeting();
+        readonly Interactions interactions = new Interactions();
         float invuln;
         bool downed;
         float downedTimer;
@@ -237,6 +238,7 @@ namespace LocalCoop
             if (downed)
             {
                 targeting.Update(gameObject, hero, false, Vector2.zero, dt);
+                interactions.ReleaseAll(hero);
                 downedTimer -= dt;
                 if (downedTimer <= 0f)
                 {
@@ -251,6 +253,7 @@ namespace LocalCoop
                 Simulate(dt);
                 CollectGeo();
                 targeting.Update(gameObject, hero, true, (Vector2)transform.position + offset, dt);
+                interactions.Update((Vector2)transform.position + offset, hero, dt);
                 CheckHurt();
                 Leash(dt);
             }
@@ -260,6 +263,7 @@ namespace LocalCoop
 
         void OnDestroy()
         {
+            interactions.ReleaseAll(hero);
             if (hero != null) targeting.Restore(gameObject, hero);
         }
 
@@ -296,6 +300,13 @@ namespace LocalCoop
 
             int moveX = x > StickDeadzone ? 1 : (x < -StickDeadzone ? -1 : 0);
             int aimY = y > 0.5f ? 1 : (y < -0.5f ? -1 : 0);
+
+            // Up at a prompt: pass the press on to the game for a moment.
+            if (Device != null && interactions.P2InRange && Pressed("up"))
+            {
+                CoopManager.LendP1Device = Device;
+                CoopManager.LendUntil = Time.time + 0.25f;
+            }
 
             // Focus: hold to spend soul and heal, standing still on the ground.
             bool focusHeld = Device != null && Held("focus");
@@ -805,6 +816,7 @@ namespace LocalCoop
             {
                 HideSlash();
                 if (hero != null) targeting.Restore(gameObject, hero);
+                interactions.ReleaseAll(hero);
             }
         }
 

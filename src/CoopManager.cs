@@ -12,6 +12,13 @@ namespace LocalCoop
     public class CoopManager : MonoBehaviour
     {
         PlayerTwo p2;
+
+        /// <summary>
+        /// Briefly lets Player 2's controller drive the Knight's controls, so an "up" press
+        /// by Player 2 at a prompt reaches the game (which only listens to the Knight's input).
+        /// </summary>
+        public static InputDevice LendP1Device;
+        public static float LendUntil;
         InputHandler inputHandler;
         KeyCode toggleKey = KeyCode.F9;
         bool p1Isolated;
@@ -125,6 +132,7 @@ namespace LocalCoop
             }
 
             InputDevice wanted = FindP1Device(devices) ?? Game.NullDevice;
+            if (LendP1Device != null && Time.time < LendUntil) wanted = LendP1Device;
             if (wanted == null) return;
             if (!ReferenceEquals(Game.Get(actions, "Device"), wanted))
             {
