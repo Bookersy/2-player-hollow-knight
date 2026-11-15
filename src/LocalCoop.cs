@@ -52,7 +52,7 @@ namespace LocalCoop
 
         public override string GetVersion()
         {
-            return "0.2.1";
+            return "0.2.2";
         }
 
         public void OnLoadGlobal(CoopSettings s)

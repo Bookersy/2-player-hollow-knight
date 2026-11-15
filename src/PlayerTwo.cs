@@ -237,7 +237,8 @@ namespace LocalCoop
                     // Sit down on the bench next to the Knight.
                     sittingWithHero = true;
                     Vector3 h = hero.transform.position;
-                    transform.position = new Vector3(h.x - 0.9f, h.y, z);
+                    facingRight = hero.cState.facingRight;
+                    transform.position = new Vector3(h.x + (facingRight ? -0.75f : 0.75f), h.y, z);
                     vel = Vector2.zero;
                     focusing = false;
                     currentClip = null;

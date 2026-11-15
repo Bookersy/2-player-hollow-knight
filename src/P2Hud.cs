@@ -17,7 +17,9 @@ namespace LocalCoop
         Vector3 mask1Pos;
         float maskDx = 0.9f;
         readonly List<GameObject> masks = new List<GameObject>();
+        readonly Dictionary<tk2dSprite, Color> originalColors = new Dictionary<tk2dSprite, Color>();
         GameObject orb;
+        Transform orbSource;
         Transform geo;
         Vector3 geoOriginal;
         bool geoMoved;
@@ -50,8 +52,9 @@ namespace LocalCoop
             }
 
             while (masks.Count < maxMasks) masks.Add(MakeMask(masks.Count));
-            Color full = new Color(Mathf.Lerp(1f, tint.r, 0.45f), Mathf.Lerp(1f, tint.g, 0.45f), Mathf.Lerp(1f, tint.b, 0.45f), 1f);
-            Color empty = new Color(0.12f, 0.12f, 0.16f, 0.9f);
+            // Multipliers: keep each piece's own colour and transparency, just tint it.
+            Color full = new Color(Mathf.Lerp(1f, tint.r, 0.35f), Mathf.Lerp(1f, tint.g, 0.35f), Mathf.Lerp(1f, tint.b, 0.35f), 1f);
+            Color empty = new Color(0.18f, 0.18f, 0.24f, 1f);
             for (int i = 0; i < masks.Count; i++)
             {
                 if (masks[i] == null) continue;
@@ -62,7 +65,6 @@ namespace LocalCoop
             if (orb != null)
             {
                 if (orb.activeSelf != visible) orb.SetActive(visible);
-                if (visible) SetColor(orb, full);
             }
 
             geoTimer -= dt;
@@ -96,6 +98,7 @@ namespace LocalCoop
             foreach (GameObject m in masks)
                 if (m != null) UnityEngine.Object.Destroy(m);
             masks.Clear();
+            originalColors.Clear();
             if (orb != null) UnityEngine.Object.Destroy(orb);
             orb = null;
             if (geo != null && geoMoved) geo.position = geoOriginal;
@@ -135,6 +138,7 @@ namespace LocalCoop
 
             if (orbSrc != null)
             {
+                orbSource = orbSrc;
                 orb = Clone(orbSrc.gameObject);
                 // Don't copy masks/geo if they live inside the vessel.
                 RemoveChildren(orb.transform, "Health");
@@ -178,6 +182,9 @@ namespace LocalCoop
             c.transform.localScale = src.transform.localScale;
             UnityEngine.Object.Destroy(holder);
             c.SetActive(true);
+            // Remember the copy's colours as the game left them (transparent parts stay transparent).
+            foreach (tk2dSprite sp in c.GetComponentsInChildren<tk2dSprite>(true))
+                if (sp != null && !originalColors.ContainsKey(sp)) originalColors[sp] = sp.color;
             return c;
         }
 
@@ -194,39 +201,53 @@ namespace LocalCoop
 
         void CenterGeo()
         {
-            if (geo == null) return;
-            Renderer[] rs = geo.GetComponentsInChildren<Renderer>();
-            bool any = false;
-            float minX = 0f, maxX = 0f;
-            foreach (Renderer r in rs)
-            {
-                if (r == null || !r.enabled) continue;
-                Bounds b = r.bounds;
-                if (!any) { minX = b.min.x; maxX = b.max.x; any = true; }
-                else { minX = Mathf.Min(minX, b.min.x); maxX = Mathf.Max(maxX, b.max.x); }
-            }
-            if (!any) return;
+            if (geo == null || maskTemplate == null || hudCam == null) return;
 
             if (!geoMoved)
             {
                 geoOriginal = geo.position;
                 geoMoved = true;
-                // Up to the mask row, in the middle of the screen.
-                Vector3 p = geo.position;
-                geo.position = new Vector3(p.x, maskTemplate.transform.position.y, p.z);
+                LocalCoop.Info("Geo counter was at " + geo.position + ", masks at " + maskTemplate.transform.position);
             }
-            float shift = CenterX() - (minX + maxX) * 0.5f;
-            if (Mathf.Abs(shift) > 0.02f)
+
+            // Measure only the geo counter's own small pieces (icon + digits).
+            float minX = 0f, maxX = 0f;
+            bool any = false;
+            foreach (Renderer r in geo.GetComponentsInChildren<Renderer>())
             {
-                Vector3 p = geo.position;
-                geo.position = new Vector3(p.x + shift, p.y, p.z);
+                if (r == null || !r.enabled) continue;
+                Bounds b = r.bounds;
+                if (b.max.x - b.min.x > 6f) continue; // ignore big glows/backgrounds
+                if (!any) { minX = b.min.x; maxX = b.max.x; any = true; }
+                else { minX = Mathf.Min(minX, b.min.x); maxX = Mathf.Max(maxX, b.max.x); }
             }
+            float width = any ? Mathf.Max(0.5f, maxX - minX) : 2f;
+            float leftOffset = any ? geo.position.x - minX : 0f;
+
+            // Left edge so the whole counter is centred; same height as the mask row.
+            float targetX = CenterX() - width * 0.5f + leftOffset;
+            float targetY = maskTemplate.transform.position.y;
+            Vector3 target = new Vector3(targetX, targetY, geo.position.z);
+
+            // Never put it somewhere you can't see it.
+            Vector3 vp = hudCam.WorldToViewportPoint(target);
+            if (vp.x < 0.05f || vp.x > 0.95f || vp.y < 0.05f || vp.y > 0.98f)
+            {
+                geo.position = geoOriginal;
+                return;
+            }
+            geo.position = target;
         }
 
-        static void SetColor(GameObject go, Color c)
+        void SetColor(GameObject go, Color mul)
         {
             foreach (tk2dSprite s in go.GetComponentsInChildren<tk2dSprite>(true))
-                if (s != null) s.color = c;
+            {
+                if (s == null) continue;
+                Color o;
+                if (!originalColors.TryGetValue(s, out o)) { o = s.color; originalColors[s] = o; }
+                s.color = new Color(o.r * mul.r, o.g * mul.g, o.b * mul.b, o.a * mul.a);
+            }
         }
 
         static void RemoveChildren(Transform t, string prefix)
