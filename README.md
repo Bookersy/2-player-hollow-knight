@@ -2,11 +2,11 @@
 
 A same-screen, local 2-player mod for Hollow Knight. Player 2 is a second, blue-tinted Knight on the same screen, using their own controller.
 
-> **Version 0.1.3 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
+> **Version 0.1.4 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
 
 ## Install (no building needed)
 1. Install [Lumafly](https://themulhima.github.io/Lumafly/) and use it to install any mod (for example HKMP). This sets up the Modding API. The game needs to be on a moddable version (Steam/GOG 1.5.78).
-2. Download [`LocalCoop-0.1.3.zip`](download/LocalCoop-0.1.3.zip?raw=1) (click it, then the download button).
+2. Download [`LocalCoop-0.1.4.zip`](download/LocalCoop-0.1.4.zip?raw=1) (click it, then the download button).
 3. Copy the `LocalCoop` folder from the zip into
    `...\Hollow Knight\hollow_knight_Data\Managed\Mods\`
    (to find it in Steam: right-click Hollow Knight → Manage → Browse local files).
@@ -17,7 +17,8 @@ All versions stay in the [`download`](download) folder. The newest is at the top
 
 | Version | Download | Changes |
 |---|---|---|
-| **0.1.3** (latest) | [LocalCoop-0.1.3.zip](download/LocalCoop-0.1.3.zip?raw=1) | Player 2's attacks show the white nail-slash effect, like the Knight's. |
+| **0.1.4** (latest) | [LocalCoop-0.1.4.zip](download/LocalCoop-0.1.4.zip?raw=1) | Player 2 matches the Knight's actual running speed, including walk zones and Sprintmaster. |
+| 0.1.3 | [LocalCoop-0.1.3.zip](download/LocalCoop-0.1.3.zip?raw=1) | Player 2's attacks show the white nail-slash effect, like the Knight's. |
 | 0.1.2 | [LocalCoop-0.1.2.zip](download/LocalCoop-0.1.2.zip?raw=1) | Player 2 uses the game's controller bindings (Options → Controller), including rebinds. |
 | 0.1.1 | [LocalCoop-0.1.1.zip](download/LocalCoop-0.1.1.zip?raw=1) | Player 2 is no longer faded or hidden behind fog and scenery, and moves at the Knight's real speeds. |
 | 0.1.0 | [LocalCoop-0.1.0.zip](download/LocalCoop-0.1.0.zip?raw=1) | First release. |

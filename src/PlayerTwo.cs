@@ -39,6 +39,13 @@ namespace LocalCoop
         float JumpSpeed = 16.65f;
         float MaxFallSpeed = 20.9f;
         float DashSpeed = 20f;
+        float WalkSpeed = 6f;
+
+        // The Knight's real ground speed, measured while he runs. Covers walk zones,
+        // Sprintmaster and anything else that changes how fast he moves.
+        Rigidbody2D heroBody;
+        float observedRun;
+        float loggedRun;
 
         HeroController hero;
         tk2dSprite sprite;
@@ -153,6 +160,8 @@ namespace LocalCoop
             JumpSpeed = HeroFloat("JUMP_SPEED", JumpSpeed);
             MaxFallSpeed = HeroFloat("MAX_FALL_VELOCITY", MaxFallSpeed);
             DashSpeed = HeroFloat("DASH_SPEED", DashSpeed);
+            WalkSpeed = HeroFloat("WALK_SPEED", WalkSpeed);
+            heroBody = hero.GetComponent<Rigidbody2D>();
             LocalCoop.Info("Player 2 speeds: run " + RunSpeed + ", jump " + JumpSpeed +
                            ", fall " + MaxFallSpeed + ", dash " + DashSpeed);
 
@@ -212,6 +221,7 @@ namespace LocalCoop
             }
 
             Tick(dt);
+            ObserveHeroSpeed();
             RefreshBindings(dt);
             UpdateSlash(dt);
 
@@ -278,7 +288,7 @@ namespace LocalCoop
             }
             else if (controlLock <= 0f && wallJumpLock <= 0f)
             {
-                vel.x = moveX * RunSpeed;
+                vel.x = moveX * CurrentRunSpeed();
                 if (moveX != 0) facingRight = moveX > 0;
             }
 
@@ -847,6 +857,28 @@ namespace LocalCoop
         {
             if (activeSlash != null && activeSlash.Renderer != null) activeSlash.Renderer.enabled = false;
             activeSlash = null;
+        }
+
+        void ObserveHeroSpeed()
+        {
+            if (heroBody == null) return;
+            HeroControllerStates st = hero.cState;
+            float vx = Mathf.Abs(heroBody.velocity.x);
+            if (st.onGround && !st.dashing && vx > 1f && vx < RunSpeed * 1.6f)
+            {
+                observedRun = vx;
+                if (Mathf.Abs(observedRun - loggedRun) > 0.2f)
+                {
+                    loggedRun = observedRun;
+                    LocalCoop.Info("Knight's run speed is " + observedRun + "; Player 2 matched.");
+                }
+            }
+        }
+
+        float CurrentRunSpeed()
+        {
+            if (hero.cState.inWalkZone) return WalkSpeed;
+            return observedRun > 0f ? observedRun : RunSpeed;
         }
 
         float HeroFloat(string field, float fallback)
