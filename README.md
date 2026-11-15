@@ -6,7 +6,7 @@ A same-screen, local 2-player mod for Hollow Knight. Player 2 is a second, blue-
 
 ## Install (no building needed)
 1. Install [Lumafly](https://themulhima.github.io/Lumafly/) and use it to install any mod (for example HKMP). This sets up the Modding API. The game needs to be on a moddable version (Steam/GOG 1.5.78).
-2. Download `LocalCoop-0.1.0.zip` from [Releases](../../releases).
+2. Download [`LocalCoop-0.1.0.zip`](download/LocalCoop-0.1.0.zip?raw=1) (click it, then the download button).
 3. Copy the `LocalCoop` folder from the zip into
    `...\Hollow Knight\hollow_knight_Data\Managed\Mods\`
    (to find it in Steam: right-click Hollow Knight → Manage → Browse local files).
