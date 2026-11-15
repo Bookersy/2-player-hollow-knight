@@ -2,11 +2,11 @@
 
 A same-screen, local 2-player mod for Hollow Knight. Player 2 is a second, blue-tinted Knight on the same screen, using their own controller.
 
-> **Version 0.1.9 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
+> **Version 0.2.0 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
 
 ## Install (no building needed)
 1. Install [Lumafly](https://themulhima.github.io/Lumafly/) and use it to install any mod (for example HKMP). This sets up the Modding API. The game needs to be on a moddable version (Steam/GOG 1.5.78).
-2. Download [`LocalCoop-0.1.9.zip`](download/LocalCoop-0.1.9.zip?raw=1) (click it, then the download button).
+2. Download [`LocalCoop-0.2.0.zip`](download/LocalCoop-0.2.0.zip?raw=1) (click it, then the download button).
 3. Copy the `LocalCoop` folder from the zip into
    `...\Hollow Knight\hollow_knight_Data\Managed\Mods\`
    (to find it in Steam: right-click Hollow Knight → Manage → Browse local files).
@@ -17,7 +17,8 @@ All versions stay in the [`download`](download) folder. The newest is at the top
 
 | Version | Download | Changes |
 |---|---|---|
-| **0.1.9** (latest) | [LocalCoop-0.1.9.zip](download/LocalCoop-0.1.9.zip?raw=1) | Fix: bench and other prompts keep seeing Player 2 while they stand there. Fix: Player 2 standing on the Knight no longer sends him fake prompt messages. |
+| **0.2.0** (latest) | [LocalCoop-0.2.0.zip](download/LocalCoop-0.2.0.zip?raw=1) | Symmetrical HUD: Player 2 gets a mirrored soul vessel and real masks in the top-right; geo counter moves to the top middle. Player 2 sits on the bench next to the Knight. |
+| 0.1.9 | [LocalCoop-0.1.9.zip](download/LocalCoop-0.1.9.zip?raw=1) | Fix: bench and other prompts keep seeing Player 2 while they stand there. Fix: Player 2 standing on the Knight no longer sends him fake prompt messages. |
 | 0.1.8 | [LocalCoop-0.1.8.zip](download/LocalCoop-0.1.8.zip?raw=1) | In-game settings (Options → Mods → Local Coop), including whether Player 1 uses keyboard or controller. Better prompt detection (benches). |
 | 0.1.7 | [LocalCoop-0.1.7.zip](download/LocalCoop-0.1.7.zip?raw=1) | Player 2 can bring up prompts (Sit, Listen, Inspect, Ascend…) and press up to use them. The Knight does the action. |
 | 0.1.6 | [LocalCoop-0.1.6.zip](download/LocalCoop-0.1.6.zip?raw=1) | Experimental: enemies notice and go after Player 2 when Player 2 is closer. Turn off with `EnemiesTargetP2`. |
@@ -36,7 +37,7 @@ Press **F9** to turn co-op on or off.
 **Both players on controllers:** in game, go to Options → Mods → Local Coop and set **Player 1 uses** to **Controller**. Player 1 gets the first controller and Player 2 the next.
 
 ## Features
-- Player 2 can run, jump, attack (side, up and down with pogo) and take damage. They have their own masks, shown in the top-right corner.
+- Player 2 can run, jump, attack (side, up and down with pogo) and take damage. They have their own HUD in the top-right: a mirrored soul vessel and masks, matching Player 1's.
 - Player 2 gets dash, double jump and wall jump once Player 1 has unlocked them, and does the same nail damage as Player 1.
 - The camera follows Player 1. If Player 2 is off screen for 1.5 s, or hits spikes, acid or a pit, they're put back next to Player 1.
 - Player 2 respawns 5 s after running out of masks. They heal fully at benches and when Player 1 respawns, and can Focus to heal.

@@ -49,6 +49,21 @@ namespace LocalCoop
             }
         }
 
+        static readonly Dictionary<string, Func<object>> staticCache = new Dictionary<string, Func<object>>();
+
+        /// <summary>A static field/property of a game class, by name (e.g. GameCameras.instance).</summary>
+        public static object StaticValue(string typeName, params string[] names)
+        {
+            Func<object> getter;
+            if (!staticCache.TryGetValue(typeName, out getter))
+            {
+                Type t = typeof(HealthManager).Assembly.GetType(typeName);
+                getter = t == null ? (() => null) : StaticGetter(t, names);
+                staticCache[typeName] = getter;
+            }
+            return getter();
+        }
+
         public static IList<InputDevice> Devices()
         {
             if (devicesGetter == null) devicesGetter = StaticGetter(typeof(InputManager), "Devices");

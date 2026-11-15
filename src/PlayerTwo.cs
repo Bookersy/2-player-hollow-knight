@@ -87,6 +87,8 @@ namespace LocalCoop
         readonly Dictionary<GameObject, float> recentGeo = new Dictionary<GameObject, float>();
         readonly EnemyTargeting targeting = new EnemyTargeting();
         readonly Interactions interactions = new Interactions();
+        readonly P2Hud hud = new P2Hud();
+        bool sittingWithHero;
         float invuln;
         bool downed;
         float downedTimer;
@@ -210,6 +212,7 @@ namespace LocalCoop
             if (!canShow)
             {
                 SetHidden(true);
+                hud.Update(masks, MaxMasks, tint, false, dt);
                 return;
             }
 
@@ -225,10 +228,26 @@ namespace LocalCoop
                 FullHeal();
             }
 
-            if (PlayerData.instance != null && PlayerData.instance.GetBool("atBench"))
+            bool atBench = PlayerData.instance != null && PlayerData.instance.GetBool("atBench");
+            if (atBench)
             {
                 FullHeal();
+                if (!sittingWithHero)
+                {
+                    // Sit down on the bench next to the Knight.
+                    sittingWithHero = true;
+                    Vector3 h = hero.transform.position;
+                    transform.position = new Vector3(h.x - 0.9f, h.y, z);
+                    vel = Vector2.zero;
+                    focusing = false;
+                    currentClip = null;
+                }
+                interactions.ReleaseAll(hero);
+                UpdateVisuals();
+                hud.Update(masks, MaxMasks, tint, true, dt);
+                return;
             }
+            sittingWithHero = false;
 
             Tick(dt);
             ObserveHeroSpeed();
@@ -259,10 +278,12 @@ namespace LocalCoop
             }
 
             UpdateVisuals();
+            hud.Update(masks, MaxMasks, tint, true, dt);
         }
 
         void OnDestroy()
         {
+            hud.Clear();
             interactions.ReleaseAll(hero);
             if (hero != null) targeting.Restore(gameObject, hero);
         }
@@ -833,7 +854,8 @@ namespace LocalCoop
             meshRenderer.enabled = !flicker;
 
             string clip;
-            if (downed) clip = "Idle";
+            if (sittingWithHero) clip = SitClip();
+            else if (downed) clip = "Idle";
             else if (focusing) clip = "Focus";
             else if (attackAnimTimer > 0f) clip = attackClip;
             else if (dashTimer > 0f) clip = "Dash";
@@ -842,6 +864,21 @@ namespace LocalCoop
             else if (Mathf.Abs(vel.x) > 0.1f) clip = "Run";
             else clip = "Idle";
             Play(clip);
+        }
+
+        string sitClip;
+
+        string SitClip()
+        {
+            if (sitClip == null)
+            {
+                sitClip = "Idle";
+                foreach (string n in new[] { "Sitting", "Sit Idle", "Sit" })
+                {
+                    if (anim.GetClipByName(n) != null) { sitClip = n; break; }
+                }
+            }
+            return sitClip;
         }
 
         void Play(string clip)
@@ -867,6 +904,24 @@ namespace LocalCoop
             float y0 = 20f;
 
             Color old = GUI.color;
+            Rect bar;
+            if (hud.SoulBarRect(max, out bar))
+            {
+                // The copied HUD shows masks and the vessel; add soul and the respawn timer.
+                GUI.color = new Color(1f, 1f, 1f, 0.2f);
+                GUI.DrawTexture(bar, Texture2D.whiteTexture);
+                GUI.color = focusing ? Color.white : new Color(0.9f, 0.9f, 0.9f, 0.9f);
+                float w = bar.width * soul / (float)SoulMax;
+                GUI.DrawTexture(new Rect(bar.x + bar.width - w, bar.y, w, bar.height), Texture2D.whiteTexture);
+                if (downed)
+                {
+                    GUI.color = Color.white;
+                    GUI.Label(new Rect(bar.x, bar.y + 10f, 220f, 24f), "Back in " + Mathf.CeilToInt(Mathf.Max(0f, downedTimer)) + "...");
+                }
+                GUI.color = old;
+                return;
+            }
+
             GUI.color = Color.white;
             GUI.Label(new Rect(x0 - 32f, y0, 32f, s + 4f), "P2");
             for (int i = 0; i < max; i++)
