@@ -20,10 +20,12 @@ namespace LocalCoop
 
         static bool initDone;
         static Type fsmType;
-        static PropertyInfo statesProp, actionsProp;
+        static PropertyInfo statesProp, actionsProp, nameProp;
 
         readonly Dictionary<Component, bool> promptCache = new Dictionary<Component, bool>();
         readonly List<Collider2D> armed = new List<Collider2D>();
+        readonly Dictionary<Collider2D, GameObject> armedFsmObject = new Dictionary<Collider2D, GameObject>();
+        readonly HashSet<string> loggedNear = new HashSet<string>();
         float timer;
         bool loggedFirst;
 
@@ -51,12 +53,14 @@ namespace LocalCoop
                     Collider2D col = armed[i];
                     if (col == null || !col.enabled || !col.gameObject.activeInHierarchy)
                     {
+                        if (col != null) armedFsmObject.Remove(col);
                         armed.RemoveAt(i);
                         continue;
                     }
                     if (!col.OverlapPoint(p2Center))
                     {
-                        if (!col.OverlapPoint(heroPos)) Send(col.gameObject, "OnTriggerExit2D", heroCol);
+                        if (!col.OverlapPoint(heroPos)) SendBoth(col, "OnTriggerExit2D", heroCol);
+                        armedFsmObject.Remove(col);
                         armed.RemoveAt(i);
                     }
                 }
@@ -66,17 +70,23 @@ namespace LocalCoop
                 for (int i = 0; i < fsms.Length; i++)
                 {
                     var fsm = fsms[i] as Component;
-                    if (fsm == null || !IsPrompt(fsm)) continue;
+                    if (fsm == null) continue;
+                    bool prompt = IsPrompt(fsm);
 
-                    Collider2D[] cols = fsm.GetComponents<Collider2D>();
+                    // The trigger area can be on the FSM's object or one of its children.
+                    Collider2D[] cols = fsm.GetComponentsInChildren<Collider2D>();
                     for (int c = 0; c < cols.Length; c++)
                     {
                         Collider2D col = cols[c];
                         if (col == null || !col.enabled || !col.isTrigger || armed.Contains(col)) continue;
                         if (!col.OverlapPoint(p2Center)) continue;
 
+                        LogNear(fsm, col, prompt);
+                        if (!prompt) continue;
+
                         armed.Add(col);
-                        Send(col.gameObject, "OnTriggerEnter2D", heroCol);
+                        armedFsmObject[col] = fsm.gameObject;
+                        SendBoth(col, "OnTriggerEnter2D", heroCol);
                         if (!loggedFirst)
                         {
                             loggedFirst = true;
@@ -103,12 +113,31 @@ namespace LocalCoop
                 {
                     if (col != null && !col.OverlapPoint(heroPos))
                     {
-                        try { Send(col.gameObject, "OnTriggerExit2D", heroCol); }
+                        try { SendBoth(col, "OnTriggerExit2D", heroCol); }
                         catch (Exception) { }
                     }
                 }
             }
             armed.Clear();
+            armedFsmObject.Clear();
+        }
+
+        void SendBoth(Collider2D col, string method, Collider2D heroCol)
+        {
+            Send(col.gameObject, method, heroCol);
+            GameObject fsmGo;
+            if (armedFsmObject.TryGetValue(col, out fsmGo) && fsmGo != null && fsmGo != col.gameObject)
+                Send(fsmGo, method, heroCol);
+        }
+
+        /// <summary>Logs (once per object) what Player 2 is standing in, to help diagnose prompts.</summary>
+        void LogNear(Component fsm, Collider2D col, bool prompt)
+        {
+            string fsmName = nameProp == null ? "?" : (nameProp.GetValue(fsm, null) as string ?? "?");
+            string key = fsm.gameObject.name + "/" + fsmName;
+            if (loggedNear.Count > 200 || !loggedNear.Add(key)) return;
+            LocalCoop.Info("Player 2 is in '" + col.gameObject.name + "' (FSM '" + fsmName + "' on '" +
+                           fsm.gameObject.name + "'): " + (prompt ? "prompt" : "not a prompt"));
         }
 
         static bool Init()
@@ -118,6 +147,7 @@ namespace LocalCoop
             fsmType = Type.GetType("PlayMakerFSM, PlayMaker");
             if (fsmType == null) return false;
             statesProp = fsmType.GetProperty("FsmStates");
+            nameProp = fsmType.GetProperty("FsmName");
             Type stateType = statesProp == null ? null : statesProp.PropertyType.GetElementType();
             actionsProp = stateType == null ? null : stateType.GetProperty("Actions");
             if (actionsProp == null) fsmType = null;
@@ -133,7 +163,10 @@ namespace LocalCoop
             result = false;
 
             // Never enemies.
-            if (fsm.GetComponent<HealthManager>() == null && fsm.GetComponentInParent<HealthManager>() == null)
+            string fsmName = nameProp == null ? "" : (nameProp.GetValue(fsm, null) as string ?? "");
+            if (fsmName.Contains("Bench")) result = true;
+
+            if (!result && fsm.GetComponent<HealthManager>() == null && fsm.GetComponentInParent<HealthManager>() == null)
             {
                 var states = statesProp.GetValue(fsm, null) as Array;
                 if (states != null)
@@ -146,7 +179,7 @@ namespace LocalCoop
                         {
                             if (a == null) continue;
                             string n = a.GetType().Name;
-                            if (n.Contains("ListenForUp") || n.Contains("PromptMarker"))
+                            if (n.Contains("ListenForUp") || n.Contains("Prompt"))
                             {
                                 result = true;
                                 break;

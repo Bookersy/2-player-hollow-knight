@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Modding;
 using UnityEngine;
 
@@ -38,7 +40,7 @@ namespace LocalCoop
         public string ToggleKey = "F9";
     }
 
-    public class LocalCoop : Mod, IGlobalSettings<CoopSettings>
+    public class LocalCoop : Mod, IGlobalSettings<CoopSettings>, IMenuMod
     {
         public static LocalCoop Instance;
         public static CoopSettings Settings = new CoopSettings();
@@ -50,7 +52,7 @@ namespace LocalCoop
 
         public override string GetVersion()
         {
-            return "0.1.7";
+            return "0.1.8";
         }
 
         public void OnLoadGlobal(CoopSettings s)
@@ -63,10 +65,61 @@ namespace LocalCoop
             return Settings;
         }
 
+        // ---------------------------------------------------------------- in-game menu
+        // Settings → Mods → Local Coop
+
+        public bool ToggleButtonInsideMenu
+        {
+            get { return false; }
+        }
+
+        public List<IMenuMod.MenuEntry> GetMenuData(IMenuMod.MenuEntry? toggleButtonEntry)
+        {
+            var list = new List<IMenuMod.MenuEntry>();
+            if (toggleButtonEntry.HasValue) list.Add(toggleButtonEntry.Value);
+
+            list.Add(new IMenuMod.MenuEntry(
+                "Co-op",
+                new[] { "Off", "On" },
+                "Turn Player 2 on or off (also F9)",
+                i => Settings.Enabled = i == 1,
+                () => Settings.Enabled ? 1 : 0));
+
+            list.Add(new IMenuMod.MenuEntry(
+                "Player 1 uses",
+                new[] { "Keyboard", "Controller" },
+                "Controller: Player 1 gets the first controller, Player 2 the next",
+                i => Settings.P1UsesKeyboard = i == 0,
+                () => Settings.P1UsesKeyboard ? 0 : 1));
+
+            list.Add(new IMenuMod.MenuEntry(
+                "Player 2 controller",
+                new[] { "1st free", "2nd free", "3rd free" },
+                "Which of the remaining controllers Player 2 uses",
+                i => Settings.P2ControllerIndex = i,
+                () => Math.Max(0, Math.Min(2, Settings.P2ControllerIndex))));
+
+            list.Add(new IMenuMod.MenuEntry(
+                "Enemies chase Player 2",
+                new[] { "Off", "On" },
+                "Enemies go after Player 2 when closer (experimental)",
+                i => Settings.EnemiesTargetP2 = i == 1,
+                () => Settings.EnemiesTargetP2 ? 1 : 0));
+
+            list.Add(new IMenuMod.MenuEntry(
+                "Player 2 masks",
+                new[] { "3", "4", "5", "6", "7", "8", "9" },
+                "Player 2's maximum health",
+                i => Settings.P2MaxMasks = i + 3,
+                () => Math.Max(0, Math.Min(6, Settings.P2MaxMasks - 3))));
+
+            return list;
+        }
+
         public override void Initialize()
         {
             var go = new GameObject("LocalCoop Manager");
-            Object.DontDestroyOnLoad(go);
+            UnityEngine.Object.DontDestroyOnLoad(go);
             go.AddComponent<CoopManager>();
             Log("Local Coop loaded. Toggle with " + Settings.ToggleKey + ".");
         }
