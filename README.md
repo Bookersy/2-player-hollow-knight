@@ -2,11 +2,11 @@
 
 A same-screen, local 2-player mod for Hollow Knight. Player 2 is a second, blue-tinted Knight on the same screen, using their own controller.
 
-> **Version 0.2.7 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
+> **Version 0.2.8 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
 
 ## Install (no building needed)
 1. Install [Lumafly](https://themulhima.github.io/Lumafly/) and use it to install any mod (for example HKMP). This sets up the Modding API. The game needs to be on a moddable version (Steam/GOG 1.5.78).
-2. Download [`LocalCoop-0.2.7.zip`](download/LocalCoop-0.2.7.zip?raw=1) (click it, then the download button).
+2. Download [`LocalCoop-0.2.8.zip`](download/LocalCoop-0.2.8.zip?raw=1) (click it, then the download button).
 3. Copy the `LocalCoop` folder from the zip into
    `...\Hollow Knight\hollow_knight_Data\Managed\Mods\`
    (to find it in Steam: right-click Hollow Knight → Manage → Browse local files).
@@ -17,7 +17,8 @@ All versions stay in the [`download`](download) folder. The newest is at the top
 
 | Version | Download | Changes |
 |---|---|---|
-| **0.2.7** (latest) | [LocalCoop-0.2.7.zip](download/LocalCoop-0.2.7.zip?raw=1) | Player 2 sounds and effects from the Knight: jump, landing, footsteps, wall slide, wall jump, dash, nail swings and getting hit; jump/landing/run/wall-slide dust and dash burst; camera shake and freeze when hit. |
+| **0.2.8** (latest) | [LocalCoop-0.2.8.zip](download/LocalCoop-0.2.8.zip?raw=1) | Fix: Player 2 no longer sits on (or jumps to) a bench from a slight upward stick nudge; sits where they stand. Fix: removed running dust that left stray shapes behind Player 2. |
+| 0.2.7 | [LocalCoop-0.2.7.zip](download/LocalCoop-0.2.7.zip?raw=1) | Player 2 sounds and effects from the Knight: jump, landing, footsteps, wall slide, wall jump, dash, nail swings and getting hit; jump/landing/run/wall-slide dust and dash burst; camera shake and freeze when hit. |
 | 0.2.6 | [LocalCoop-0.2.6.zip](download/LocalCoop-0.2.6.zip?raw=1) | Player 2's soul vessel fills with Player 2's own soul (it learns how from the Knight's vessel as his soul changes). Geo counter moved to the top middle. |
 | 0.2.5 | [LocalCoop-0.2.5.zip](download/LocalCoop-0.2.5.zip?raw=1) | Player 2 sits on benches on their own (the Knight isn't moved); the Knight sitting no longer makes Player 2 sit. Player 2's HUD now matches Player 1's exactly. Geo counter back in its normal place. |
 | 0.2.4 | [LocalCoop-0.2.4.zip](download/LocalCoop-0.2.4.zip?raw=1) | Focus animation for Player 2: Knight's focus poses, glow while focusing, white flash on each heal, and the Knight's focus effects. |

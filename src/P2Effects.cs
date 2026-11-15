@@ -146,7 +146,7 @@ namespace LocalCoop
         /// Spawns a visual-only copy of one of the Knight's effect prefabs (its own scripts,
         /// which follow the Knight, are removed) and plays its animations/particles.
         /// </summary>
-        public GameObject Spawn(string prefabField, Vector3 pos, bool facingRight, float lifetime = 2f)
+        public GameObject Spawn(string prefabField, Vector3 pos, bool facingRight, float lifetime = 1f)
         {
             GameObject prefab;
             if (!prefabs.TryGetValue(prefabField, out prefab)) return null;

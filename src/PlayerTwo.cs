@@ -97,6 +97,7 @@ namespace LocalCoop
         bool wasGrounded = true;
         float lastFallSpeed;
         float runDustTimer;
+        float sitCooldown;
         float invuln;
         bool downed;
         float downedTimer;
@@ -254,6 +255,7 @@ namespace LocalCoop
                 {
                     p2Sitting = false;
                     currentClip = null;
+                    sitCooldown = 0.6f;
                 }
                 UpdateVisuals();
                 hud.Update(masks, MaxMasks, tint, true, dt, soul);
@@ -317,6 +319,7 @@ namespace LocalCoop
             hurtTimer -= dt;
             focusGetTimer -= dt;
             healFlash -= dt;
+            sitCooldown -= dt;
         }
 
         // ---------------------------------------------------------------- input
@@ -340,7 +343,9 @@ namespace LocalCoop
             int aimY = y > 0.5f ? 1 : (y < -0.5f ? -1 : 0);
 
             // Up at a prompt: pass the press on to the game for a moment.
-            if (Device != null && interactions.P2InRange && Pressed("up") && grounded)
+            // Only a deliberate up press counts: stick mostly up, not running sideways.
+            bool deliberateUp = Pressed("up") && y > 0.7f && Mathf.Abs(x) < 0.35f;
+            if (Device != null && interactions.P2InRange && deliberateUp && grounded && sitCooldown <= 0f)
             {
                 Transform bench = interactions.BenchInRange();
                 if (bench != null)
@@ -349,8 +354,7 @@ namespace LocalCoop
                     p2Sitting = true;
                     facingRight = hero.cState.facingRight;
                     Vector3 bp = bench.position;
-                    transform.position = new Vector3(bp.x, transform.position.y, z);
-                    vel = Vector2.zero;
+                    vel = Vector2.zero; // sit where Player 2 is standing; no teleport
                     focusing = false;
                     currentClip = null;
                     interactions.ReleaseAll(hero);
@@ -572,15 +576,6 @@ namespace LocalCoop
 
             bool running = grounded && Mathf.Abs(vel.x) > 0.1f && dashTimer <= 0f && !focusing;
             fx.SetRunning(running);
-            if (running)
-            {
-                runDustTimer -= dt;
-                if (runDustTimer <= 0f)
-                {
-                    runDustTimer = 0.35f;
-                    fx.Spawn("runEffectPrefab", transform.position, facingRight, 1f);
-                }
-            }
             fx.SetWallSliding(wallSliding, facingRight);
         }
 
