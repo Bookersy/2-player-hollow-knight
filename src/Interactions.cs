@@ -104,11 +104,62 @@ namespace LocalCoop
                         }
                     }
                 }
+                // Also: any trigger Player 2 stands in whose interaction script is on a parent.
+                Collider2D[] here = Physics2D.OverlapBoxAll(p2Center, new Vector2(0.4f, 0.8f), 0f, ~0);
+                for (int i = 0; i < here.Length; i++)
+                {
+                    Collider2D col = here[i];
+                    if (col == null || !col.enabled || !col.isTrigger || armed.Contains(col)) continue;
+                    if (col.transform.IsChildOf(hero.transform)) continue;
+                    if (col.GetComponentInParent<HealthManager>() != null) continue;
+
+                    Component promptFsm = null;
+                    foreach (MonoBehaviour mb in col.GetComponentsInParent<MonoBehaviour>())
+                    {
+                        if (mb == null || !fsmType.IsInstanceOfType(mb)) continue;
+                        if (mb.transform.IsChildOf(hero.transform) || mb.GetComponentInParent<Camera>() != null) continue;
+                        if (IsPrompt(mb)) { promptFsm = mb; break; }
+                    }
+
+                    if (promptFsm == null)
+                    {
+                        LogUnknown(col);
+                        continue;
+                    }
+
+                    LogNear(promptFsm, col, true);
+                    armed.Add(col);
+                    armedFsmObject[col] = promptFsm.gameObject;
+                    SendBoth(col, "OnTriggerEnter2D", heroCol);
+                    SendBoth(col, "OnTriggerStay2D", heroCol);
+                    if (loggedPrompts < 20)
+                    {
+                        loggedPrompts++;
+                        LocalCoop.Info("Player 2 brought up a prompt on '" + col.gameObject.name + "' (" + Receivers(col) + ").");
+                    }
+                }
             }
             catch (Exception e)
             {
                 LocalCoop.Info("Player 2 interaction error: " + e.Message);
             }
+        }
+
+        /// <summary>For the log: a trigger Player 2 stood in that isn't a known prompt.</summary>
+        void LogUnknown(Collider2D col)
+        {
+            string key = "?" + col.gameObject.name;
+            if (loggedNear.Count > 200 || !loggedNear.Add(key)) return;
+            var parts = new List<string>();
+            Transform t = col.transform;
+            for (int depth = 0; t != null && depth < 3; depth++, t = t.parent)
+            {
+                var types = new List<string>();
+                foreach (MonoBehaviour mb in t.GetComponents<MonoBehaviour>())
+                    if (mb != null) types.Add(mb.GetType().Name);
+                parts.Add("'" + t.name + "' [" + string.Join(", ", types.ToArray()) + "]");
+            }
+            LocalCoop.Info("Player 2 is in trigger " + string.Join(" < ", parts.ToArray()) + ": not a prompt");
         }
 
         /// <summary>Hide any prompts Player 2 is holding open (e.g. when Player 2 is hidden).</summary>
