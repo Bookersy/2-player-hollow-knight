@@ -2,11 +2,11 @@
 
 A same-screen, local 2-player mod for Hollow Knight. Player 2 is a second, blue-tinted Knight on the same screen, using their own controller.
 
-> **Version 0.1.8 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
+> **Version 0.1.9 is experimental.** Please report bugs in [Issues](../../issues) and attach the lines mentioning "Local Coop" from your `ModLog.txt`.
 
 ## Install (no building needed)
 1. Install [Lumafly](https://themulhima.github.io/Lumafly/) and use it to install any mod (for example HKMP). This sets up the Modding API. The game needs to be on a moddable version (Steam/GOG 1.5.78).
-2. Download [`LocalCoop-0.1.8.zip`](download/LocalCoop-0.1.8.zip?raw=1) (click it, then the download button).
+2. Download [`LocalCoop-0.1.9.zip`](download/LocalCoop-0.1.9.zip?raw=1) (click it, then the download button).
 3. Copy the `LocalCoop` folder from the zip into
    `...\Hollow Knight\hollow_knight_Data\Managed\Mods\`
    (to find it in Steam: right-click Hollow Knight → Manage → Browse local files).
@@ -17,7 +17,8 @@ All versions stay in the [`download`](download) folder. The newest is at the top
 
 | Version | Download | Changes |
 |---|---|---|
-| **0.1.8** (latest) | [LocalCoop-0.1.8.zip](download/LocalCoop-0.1.8.zip?raw=1) | In-game settings (Options → Mods → Local Coop), including whether Player 1 uses keyboard or controller. Better prompt detection (benches). |
+| **0.1.9** (latest) | [LocalCoop-0.1.9.zip](download/LocalCoop-0.1.9.zip?raw=1) | Fix: bench and other prompts keep seeing Player 2 while they stand there. Fix: Player 2 standing on the Knight no longer sends him fake prompt messages. |
+| 0.1.8 | [LocalCoop-0.1.8.zip](download/LocalCoop-0.1.8.zip?raw=1) | In-game settings (Options → Mods → Local Coop), including whether Player 1 uses keyboard or controller. Better prompt detection (benches). |
 | 0.1.7 | [LocalCoop-0.1.7.zip](download/LocalCoop-0.1.7.zip?raw=1) | Player 2 can bring up prompts (Sit, Listen, Inspect, Ascend…) and press up to use them. The Knight does the action. |
 | 0.1.6 | [LocalCoop-0.1.6.zip](download/LocalCoop-0.1.6.zip?raw=1) | Experimental: enemies notice and go after Player 2 when Player 2 is closer. Turn off with `EnemiesTargetP2`. |
 | 0.1.5 | [LocalCoop-0.1.5.zip](download/LocalCoop-0.1.5.zip?raw=1) | Player 2 gets a soul meter and can Focus to heal (hold the game's Focus button). Player 2 can pick up geo. |

@@ -27,7 +27,7 @@ namespace LocalCoop
         readonly Dictionary<Collider2D, GameObject> armedFsmObject = new Dictionary<Collider2D, GameObject>();
         readonly HashSet<string> loggedNear = new HashSet<string>();
         float timer;
-        bool loggedFirst;
+        int loggedPrompts;
 
         public bool P2InRange
         {
@@ -57,7 +57,12 @@ namespace LocalCoop
                         armed.RemoveAt(i);
                         continue;
                     }
-                    if (!col.OverlapPoint(p2Center))
+                    if (col.OverlapPoint(p2Center))
+                    {
+                        // Many prompts (benches included) keep checking the Knight is still there.
+                        SendBoth(col, "OnTriggerStay2D", heroCol);
+                    }
+                    else
                     {
                         if (!col.OverlapPoint(heroPos)) SendBoth(col, "OnTriggerExit2D", heroCol);
                         armedFsmObject.Remove(col);
@@ -71,6 +76,8 @@ namespace LocalCoop
                 {
                     var fsm = fsms[i] as Component;
                     if (fsm == null) continue;
+                    // Never the Knight himself (his spell/map FSMs) or the camera.
+                    if (fsm.transform.IsChildOf(hero.transform) || fsm.GetComponentInParent<Camera>() != null) continue;
                     bool prompt = IsPrompt(fsm);
 
                     // The trigger area can be on the FSM's object or one of its children.
@@ -79,6 +86,7 @@ namespace LocalCoop
                     {
                         Collider2D col = cols[c];
                         if (col == null || !col.enabled || !col.isTrigger || armed.Contains(col)) continue;
+                        if (col.transform.IsChildOf(hero.transform)) continue;
                         if (!col.OverlapPoint(p2Center)) continue;
 
                         LogNear(fsm, col, prompt);
@@ -87,10 +95,12 @@ namespace LocalCoop
                         armed.Add(col);
                         armedFsmObject[col] = fsm.gameObject;
                         SendBoth(col, "OnTriggerEnter2D", heroCol);
-                        if (!loggedFirst)
+                        SendBoth(col, "OnTriggerStay2D", heroCol);
+                        if (loggedPrompts < 20)
                         {
-                            loggedFirst = true;
-                            LocalCoop.Info("Player 2 brought up a prompt on '" + col.gameObject.name + "'.");
+                            loggedPrompts++;
+                            LocalCoop.Info("Player 2 brought up a prompt on '" + col.gameObject.name + "' (" +
+                                           Receivers(col) + ").");
                         }
                     }
                 }
@@ -138,6 +148,25 @@ namespace LocalCoop
             if (loggedNear.Count > 200 || !loggedNear.Add(key)) return;
             LocalCoop.Info("Player 2 is in '" + col.gameObject.name + "' (FSM '" + fsmName + "' on '" +
                            fsm.gameObject.name + "'): " + (prompt ? "prompt" : "not a prompt"));
+        }
+
+        /// <summary>For the log: which scripts received the trigger messages.</summary>
+        string Receivers(Collider2D col)
+        {
+            var names = new List<string>();
+            foreach (GameObject go in new[] { col.gameObject, armedFsmObject.ContainsKey(col) ? armedFsmObject[col] : null })
+            {
+                if (go == null) continue;
+                foreach (MonoBehaviour mb in go.GetComponents<MonoBehaviour>())
+                {
+                    if (mb == null) continue;
+                    Type t = mb.GetType();
+                    if (t.GetMethod("OnTriggerEnter2D", AnyInstance, null, new[] { typeof(Collider2D) }, null) != null ||
+                        t.GetMethod("OnTriggerStay2D", AnyInstance, null, new[] { typeof(Collider2D) }, null) != null)
+                        names.Add(go.name + ":" + t.Name);
+                }
+            }
+            return names.Count == 0 ? "no receivers" : string.Join(", ", names.ToArray());
         }
 
         static bool Init()
